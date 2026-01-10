@@ -1,51 +1,82 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
-import type { Node, Link, GraphData } from '@/types/knowledge';
+import { api } from '@/lib/api';
+import type { Node, Link, Project } from '@/types/knowledge';
 import { useGraphStore } from '@/store/useGraphStore';
 
 export const graphKeys = {
   all: ['graph'] as const,
-  data: () => [...graphKeys.all, 'data'] as const,
-  nodes: () => [...graphKeys.all, 'nodes'] as const,
-  node: (id: string) => [...graphKeys.nodes(), id] as const,
+  projects: () => [...graphKeys.all, 'projects'] as const,
+  project: (id: string) => [...graphKeys.projects(), id] as const,
+  nodes: (projectId?: string) => [...graphKeys.all, 'nodes', projectId] as const,
+  node: (id: string) => [...graphKeys.all, 'node', id] as const,
   links: () => [...graphKeys.all, 'links'] as const,
-  search: (query: string) => [...graphKeys.nodes(), 'search', query] as const,
-  presence: () => [...graphKeys.all, 'presence'] as const,
+  search: (query: string) => [...graphKeys.all, 'search', query] as const,
 };
 
-export function useGraphData() {
-  const setGraphData = useGraphStore((s) => s.setGraphData);
-  const setLoading = useGraphStore((s) => s.setLoading);
+export function useProjects(userId: string | null) {
+  const setProjects = useGraphStore((s) => s.setProjects);
 
   return useQuery({
-    queryKey: graphKeys.data(),
+    queryKey: graphKeys.projects(),
     queryFn: async () => {
-      setLoading(true);
-      try {
-        const data = await apiClient.getGraphData();
-        setGraphData(data);
-        return data;
-      } finally {
-        setLoading(false);
-      }
+      if (!userId) return [];
+      const projects = await api.projects.getByUser(userId);
+      setProjects(projects);
+      return projects;
     },
-    staleTime: 1000 * 60 * 5,
+    enabled: !!userId,
   });
 }
 
-export function useNodes() {
+export function useProject(id: string) {
+  const setCurrentProject = useGraphStore((s) => s.setCurrentProject);
+
   return useQuery({
-    queryKey: graphKeys.nodes(),
-    queryFn: () => apiClient.getNodes(),
+    queryKey: graphKeys.project(id),
+    queryFn: async () => {
+      const project = await api.projects.getById(id);
+      setCurrentProject(project);
+      return project;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useCreateProject() {
+  const queryClient = useQueryClient();
+  const addProject = useGraphStore((s) => s.addProject);
+
+  return useMutation({
+    mutationFn: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) =>
+      api.projects.create(project),
+    onSuccess: (newProject: Project) => {
+      addProject(newProject);
+      queryClient.invalidateQueries({ queryKey: graphKeys.projects() });
+    },
+  });
+}
+
+export function useProjectNodes(projectId: string | undefined) {
+  const setNodes = useGraphStore((s) => s.setNodes);
+
+  return useQuery({
+    queryKey: graphKeys.nodes(projectId),
+    queryFn: async () => {
+      if (!projectId) return [];
+      const nodes = await api.nodes.getByProject(projectId);
+      setNodes(nodes);
+      return nodes;
+    },
+    enabled: !!projectId,
   });
 }
 
 export function useNode(id: string) {
   return useQuery({
     queryKey: graphKeys.node(id),
-    queryFn: () => apiClient.getNode(id),
+    queryFn: () => api.nodes.getById(id),
     enabled: !!id,
   });
 }
@@ -53,14 +84,14 @@ export function useNode(id: string) {
 export function useCreateNode() {
   const queryClient = useQueryClient();
   const addNode = useGraphStore((s) => s.addNode);
+  const currentProject = useGraphStore((s) => s.currentProject);
 
   return useMutation({
     mutationFn: (node: Omit<Node, 'id' | 'createdAt' | 'updatedAt'>) =>
-      apiClient.createNode(node),
-    onSuccess: (newNode) => {
+      api.nodes.create(node),
+    onSuccess: (newNode: Node) => {
       addNode(newNode);
-      queryClient.invalidateQueries({ queryKey: graphKeys.nodes() });
-      queryClient.invalidateQueries({ queryKey: graphKeys.data() });
+      queryClient.invalidateQueries({ queryKey: graphKeys.nodes(currentProject?.id) });
     },
   });
 }
@@ -71,7 +102,7 @@ export function useUpdateNode() {
 
   return useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Node> }) =>
-      apiClient.updateNode(id, updates),
+      api.nodes.update(id, updates),
     onMutate: async ({ id, updates }) => {
       await queryClient.cancelQueries({ queryKey: graphKeys.node(id) });
       const previousNode = queryClient.getQueryData(graphKeys.node(id));
@@ -85,7 +116,6 @@ export function useUpdateNode() {
     },
     onSettled: (_, __, { id }) => {
       queryClient.invalidateQueries({ queryKey: graphKeys.node(id) });
-      queryClient.invalidateQueries({ queryKey: graphKeys.data() });
     },
   });
 }
@@ -93,13 +123,13 @@ export function useUpdateNode() {
 export function useDeleteNode() {
   const queryClient = useQueryClient();
   const deleteNode = useGraphStore((s) => s.deleteNode);
+  const currentProject = useGraphStore((s) => s.currentProject);
 
   return useMutation({
-    mutationFn: (id: string) => apiClient.deleteNode(id),
+    mutationFn: (id: string) => api.nodes.delete(id),
     onSuccess: (_, id) => {
       deleteNode(id);
-      queryClient.invalidateQueries({ queryKey: graphKeys.nodes() });
-      queryClient.invalidateQueries({ queryKey: graphKeys.data() });
+      queryClient.invalidateQueries({ queryKey: graphKeys.nodes(currentProject?.id) });
     },
   });
 }
@@ -109,11 +139,11 @@ export function useCreateLink() {
   const addLink = useGraphStore((s) => s.addLink);
 
   return useMutation({
-    mutationFn: (link: Omit<Link, 'id'>) => apiClient.createLink(link),
-    onSuccess: (newLink) => {
+    mutationFn: (data: { sourceId: string; targetId: string; relationshipType?: string; userId?: string }) =>
+      api.links.create(data),
+    onSuccess: (newLink: Link) => {
       addLink(newLink);
       queryClient.invalidateQueries({ queryKey: graphKeys.links() });
-      queryClient.invalidateQueries({ queryKey: graphKeys.data() });
     },
   });
 }
@@ -123,11 +153,10 @@ export function useDeleteLink() {
   const deleteLink = useGraphStore((s) => s.deleteLink);
 
   return useMutation({
-    mutationFn: (id: string) => apiClient.deleteLink(id),
+    mutationFn: (id: string) => api.links.delete(id),
     onSuccess: (_, id) => {
       deleteLink(id);
       queryClient.invalidateQueries({ queryKey: graphKeys.links() });
-      queryClient.invalidateQueries({ queryKey: graphKeys.data() });
     },
   });
 }
@@ -135,7 +164,7 @@ export function useDeleteLink() {
 export function useSearchNodes(query: string) {
   return useQuery({
     queryKey: graphKeys.search(query),
-    queryFn: () => apiClient.searchNodes(query),
+    queryFn: () => api.nodes.search(query),
     enabled: query.length >= 2,
   });
 }

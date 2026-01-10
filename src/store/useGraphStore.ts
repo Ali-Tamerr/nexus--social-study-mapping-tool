@@ -1,52 +1,104 @@
 import { create } from 'zustand';
-import type { Node, Link, GraphData, UnlinkedMention } from '@/types/knowledge';
+import type { Project, Node, Link, GraphData, GraphSettings, Tag, Attachment } from '@/types/knowledge';
 
-interface GraphState {
+interface AppState {
+  projects: Project[];
+  currentProject: Project | null;
   nodes: Node[];
   links: Link[];
+  tags: Tag[];
   activeNode: Node | null;
   hoveredNode: Node | null;
   searchQuery: string;
   isEditorOpen: boolean;
   isCommandPaletteOpen: boolean;
-  selectedTags: string[];
-  unlinkedMentions: UnlinkedMention[];
+  isCreateProjectOpen: boolean;
   isLoading: boolean;
+  graphSettings: GraphSettings;
+  currentUserId: string | null;
+  
+  setCurrentUserId: (userId: string | null) => void;
+  setProjects: (projects: Project[]) => void;
+  addProject: (project: Project) => void;
+  updateProject: (id: string, updates: Partial<Project>) => void;
+  deleteProject: (id: string) => void;
+  setCurrentProject: (project: Project | null) => void;
   
   setNodes: (nodes: Node[]) => void;
   setLinks: (links: Link[]) => void;
+  setTags: (tags: Tag[]) => void;
   setGraphData: (data: GraphData) => void;
   addNode: (node: Node) => void;
   updateNode: (id: string, updates: Partial<Node>) => void;
   deleteNode: (id: string) => void;
   addLink: (link: Link) => void;
   deleteLink: (id: string) => void;
+  addTagToNode: (nodeId: string, tag: Tag) => void;
+  removeTagFromNode: (nodeId: string, tagId: string) => void;
+  addAttachmentToNode: (nodeId: string, attachment: Attachment) => void;
+  removeAttachmentFromNode: (nodeId: string, attachmentId: string) => void;
   setActiveNode: (node: Node | null) => void;
   setHoveredNode: (node: Node | null) => void;
   setSearchQuery: (query: string) => void;
   toggleEditor: (open?: boolean) => void;
   toggleCommandPalette: (open?: boolean) => void;
-  setSelectedTags: (tags: string[]) => void;
-  toggleTag: (tag: string) => void;
-  setUnlinkedMentions: (mentions: UnlinkedMention[]) => void;
+  toggleCreateProject: (open?: boolean) => void;
   setLoading: (loading: boolean) => void;
-  findUnlinkedMentions: () => void;
+  setGraphSettings: (settings: Partial<GraphSettings>) => void;
 }
 
-export const useGraphStore = create<GraphState>()((set, get) => ({
+export const useGraphStore = create<AppState>()((set) => ({
+  projects: [],
+  currentProject: null,
   nodes: [],
   links: [],
+  tags: [],
   activeNode: null,
   hoveredNode: null,
   searchQuery: '',
   isEditorOpen: false,
   isCommandPaletteOpen: false,
-  selectedTags: [],
-  unlinkedMentions: [],
+  isCreateProjectOpen: false,
   isLoading: false,
+  graphSettings: {
+    freezeOthersOnDrag: false,
+    lockAllMovement: false,
+  },
+  currentUserId: null,
+
+  setCurrentUserId: (userId) => set({ currentUserId: userId }),
+  setProjects: (projects) => set({ projects }),
+  
+  addProject: (project) => set((state) => ({ 
+    projects: [...state.projects, project] 
+  })),
+  
+  updateProject: (id, updates) => set((state) => ({
+    projects: state.projects.map((p) => 
+      p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
+    ),
+    currentProject: state.currentProject?.id === id 
+      ? { ...state.currentProject, ...updates, updatedAt: new Date().toISOString() } 
+      : state.currentProject
+  })),
+  
+  deleteProject: (id) => set((state) => ({
+    projects: state.projects.filter((p) => p.id !== id),
+    currentProject: state.currentProject?.id === id ? null : state.currentProject,
+    nodes: state.currentProject?.id === id ? [] : state.nodes,
+    links: state.currentProject?.id === id ? [] : state.links,
+  })),
+  
+  setCurrentProject: (project) => set({ 
+    currentProject: project,
+    nodes: [],
+    links: [],
+    activeNode: null,
+  }),
 
   setNodes: (nodes) => set({ nodes }),
   setLinks: (links) => set({ links }),
+  setTags: (tags) => set({ tags }),
   setGraphData: (data) => set({ nodes: data.nodes, links: data.links }),
   
   addNode: (node) => set((state) => ({ 
@@ -75,6 +127,50 @@ export const useGraphStore = create<GraphState>()((set, get) => ({
   deleteLink: (id) => set((state) => ({
     links: state.links.filter((l) => l.id !== id)
   })),
+
+  addTagToNode: (nodeId, tag) => set((state) => ({
+    nodes: state.nodes.map((n) => 
+      n.id === nodeId 
+        ? { ...n, tags: [...(n.tags || []), tag] }
+        : n
+    ),
+    activeNode: state.activeNode?.id === nodeId
+      ? { ...state.activeNode, tags: [...(state.activeNode.tags || []), tag] }
+      : state.activeNode
+  })),
+
+  removeTagFromNode: (nodeId, tagId) => set((state) => ({
+    nodes: state.nodes.map((n) => 
+      n.id === nodeId 
+        ? { ...n, tags: (n.tags || []).filter((t) => t.id !== tagId) }
+        : n
+    ),
+    activeNode: state.activeNode?.id === nodeId
+      ? { ...state.activeNode, tags: (state.activeNode.tags || []).filter((t) => t.id !== tagId) }
+      : state.activeNode
+  })),
+
+  addAttachmentToNode: (nodeId, attachment) => set((state) => ({
+    nodes: state.nodes.map((n) => 
+      n.id === nodeId 
+        ? { ...n, attachments: [...(n.attachments || []), attachment] }
+        : n
+    ),
+    activeNode: state.activeNode?.id === nodeId
+      ? { ...state.activeNode, attachments: [...(state.activeNode.attachments || []), attachment] }
+      : state.activeNode
+  })),
+
+  removeAttachmentFromNode: (nodeId, attachmentId) => set((state) => ({
+    nodes: state.nodes.map((n) => 
+      n.id === nodeId 
+        ? { ...n, attachments: (n.attachments || []).filter((a) => a.id !== attachmentId) }
+        : n
+    ),
+    activeNode: state.activeNode?.id === nodeId
+      ? { ...state.activeNode, attachments: (state.activeNode.attachments || []).filter((a) => a.id !== attachmentId) }
+      : state.activeNode
+  })),
   
   setActiveNode: (node) => set({ activeNode: node, isEditorOpen: node !== null }),
   setHoveredNode: (node) => set({ hoveredNode: node }),
@@ -85,84 +181,23 @@ export const useGraphStore = create<GraphState>()((set, get) => ({
   toggleCommandPalette: (open) => set((state) => ({ 
     isCommandPaletteOpen: open ?? !state.isCommandPaletteOpen 
   })),
-  setSelectedTags: (tags) => set({ selectedTags: tags }),
-  toggleTag: (tag) => set((state) => ({
-    selectedTags: state.selectedTags.includes(tag)
-      ? state.selectedTags.filter((t) => t !== tag)
-      : [...state.selectedTags, tag]
+  toggleCreateProject: (open) => set((state) => ({ 
+    isCreateProjectOpen: open ?? !state.isCreateProjectOpen 
   })),
-  setUnlinkedMentions: (mentions) => set({ unlinkedMentions: mentions }),
   setLoading: (loading) => set({ isLoading: loading }),
-  
-  findUnlinkedMentions: () => {
-    const { nodes, links } = get();
-    const mentions: UnlinkedMention[] = [];
-    
-    const existingLinks = new Set(
-      links.map((l) => `${l.source}-${l.target}`)
-    );
-    
-    nodes.forEach((sourceNode) => {
-      nodes.forEach((targetNode) => {
-        if (sourceNode.id === targetNode.id) return;
-        
-        const linkKey1 = `${sourceNode.id}-${targetNode.id}`;
-        const linkKey2 = `${targetNode.id}-${sourceNode.id}`;
-        if (existingLinks.has(linkKey1) || existingLinks.has(linkKey2)) return;
-        
-        const titleLower = targetNode.title.toLowerCase();
-        const contentLower = sourceNode.content.toLowerCase();
-        
-        const index = contentLower.indexOf(titleLower);
-        if (index !== -1 && titleLower.length >= 3) {
-          const start = Math.max(0, index - 30);
-          const end = Math.min(sourceNode.content.length, index + titleLower.length + 30);
-          const context = sourceNode.content.substring(start, end);
-          
-          mentions.push({
-            sourceNodeId: sourceNode.id,
-            sourceNodeTitle: sourceNode.title,
-            targetNodeId: targetNode.id,
-            targetNodeTitle: targetNode.title,
-            matchedText: targetNode.title,
-            context: (start > 0 ? '...' : '') + context + (end < sourceNode.content.length ? '...' : '')
-          });
-        }
-      });
-    });
-    
-    set({ unlinkedMentions: mentions });
-  }
+  setGraphSettings: (settings) => set((state) => ({
+    graphSettings: { ...state.graphSettings, ...settings }
+  })),
 }));
 
-export function filterNodes(
-  nodes: Node[],
-  searchQuery: string,
-  selectedTags: string[]
-): Node[] {
-  let filtered = nodes;
+export function filterNodes(nodes: Node[], searchQuery: string): Node[] {
+  if (!searchQuery) return nodes;
   
-  if (searchQuery) {
-    const query = searchQuery.toLowerCase();
-    filtered = filtered.filter(
-      (n) =>
-        n.title.toLowerCase().includes(query) ||
-        n.content.toLowerCase().includes(query) ||
-        n.tags.some((t) => t.toLowerCase().includes(query))
-    );
-  }
-  
-  if (selectedTags.length > 0) {
-    filtered = filtered.filter((n) =>
-      selectedTags.some((tag) => n.tags.includes(tag))
-    );
-  }
-  
-  return filtered;
-}
-
-export function extractAllTags(nodes: Node[]): string[] {
-  const tagsSet = new Set<string>();
-  nodes.forEach((n) => n.tags.forEach((t) => tagsSet.add(t)));
-  return Array.from(tagsSet).sort();
+  const query = searchQuery.toLowerCase();
+  return nodes.filter(
+    (n) =>
+      n.title.toLowerCase().includes(query) ||
+      (n.content?.toLowerCase().includes(query) ?? false) ||
+      (n.tags?.some((t) => t.name.toLowerCase().includes(query)) ?? false)
+  );
 }

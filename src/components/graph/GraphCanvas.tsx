@@ -5,24 +5,19 @@ import { useRef, useCallback, useMemo, useEffect, useState } from 'react';
 import { useGraphStore, filterNodes } from '@/store/useGraphStore';
 import { GROUP_COLORS, RELATIONSHIP_COLORS } from '@/types/knowledge';
 import type { RelationshipType } from '@/types/knowledge';
-import { usePresence } from '@/hooks/usePresence';
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
-  loading: () => (
-    <div className="flex h-full w-full items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-violet-500/30 border-t-violet-500" />
-        <span className="text-sm text-zinc-400">Loading graph...</span>
-      </div>
-    </div>
-  ),
 });
 
 export function GraphCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const graphRef = useRef<{ centerAt: (x?: number, y?: number, ms?: number) => void; zoom: (scale?: number, ms?: number) => void; zoomToFit: (ms?: number, padding?: number) => void } | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const nodes = useGraphStore((s) => s.nodes);
   const links = useGraphStore((s) => s.links);
@@ -30,14 +25,12 @@ export function GraphCanvas() {
   const setActiveNode = useGraphStore((s) => s.setActiveNode);
   const setHoveredNode = useGraphStore((s) => s.setHoveredNode);
   const searchQuery = useGraphStore((s) => s.searchQuery);
-  const selectedTags = useGraphStore((s) => s.selectedTags);
+  const graphSettings = useGraphStore((s) => s.graphSettings);
 
   const filteredNodes = useMemo(
-    () => filterNodes(nodes, searchQuery, selectedTags),
-    [nodes, searchQuery, selectedTags]
+    () => filterNodes(nodes, searchQuery),
+    [nodes, searchQuery]
   );
-
-  const { isNodeBeingEdited } = usePresence(activeNode?.id || null);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -54,12 +47,14 @@ export function GraphCanvas() {
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
+
+
   const graphData = useMemo(() => {
     const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
     const graphNodes = filteredNodes.map((n) => ({
       id: n.id,
       title: n.title,
-      group: n.group,
+      groupId: n.groupId,
     }));
 
     const graphLinks = links
@@ -80,8 +75,6 @@ export function GraphCanvas() {
       const node = nodes.find((n) => n.id === String(nodeObj.id));
       if (node) {
         setActiveNode(node);
-        graphRef.current?.centerAt(nodeObj.x, nodeObj.y, 800);
-        graphRef.current?.zoom(2, 800);
       }
     },
     [nodes, setActiveNode]
@@ -99,24 +92,19 @@ export function GraphCanvas() {
     [nodes, setHoveredNode]
   );
 
-  const handleZoomToFit = useCallback(() => {
-    graphRef.current?.zoomToFit(400, 50);
-  }, []);
-
   const nodeCanvasObject = useCallback(
     (
-      node: { id?: string | number; x?: number; y?: number; title?: string; group?: number },
+      node: { id?: string | number; x?: number; y?: number; title?: string; groupId?: number },
       ctx: CanvasRenderingContext2D,
       globalScale: number
     ) => {
-      const label = (node as { title?: string }).title || String(node.id);
-      const nodeGroup = (node as { group?: number }).group ?? 0;
+      const label = node.title || String(node.id);
+      const nodeGroup = node.groupId ?? 0;
       const fontSize = Math.max(12 / globalScale, 4);
       ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
 
       const nodeId = String(node.id);
       const isActive = activeNode?.id === nodeId;
-      const isBeingEdited = isNodeBeingEdited(nodeId);
       const isSearchMatch =
         searchQuery &&
         label.toLowerCase().includes(searchQuery.toLowerCase());
@@ -125,13 +113,6 @@ export function GraphCanvas() {
       const nodeRadius = isActive ? 8 : 6;
       const x = node.x || 0;
       const y = node.y || 0;
-
-      if (isBeingEdited) {
-        ctx.beginPath();
-        ctx.arc(x, y, nodeRadius + 6, 0, 2 * Math.PI);
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
-        ctx.fill();
-      }
 
       if (isActive) {
         ctx.beginPath();
@@ -177,66 +158,64 @@ export function GraphCanvas() {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.fillText(label, x, y + nodeRadius + 3);
     },
-    [activeNode, searchQuery, isNodeBeingEdited]
+    [activeNode, searchQuery]
   );
 
-  const linkColor = useCallback((link: { relationshipType?: RelationshipType }) => {
-    const relType = link.relationshipType || 'neutral';
+  const linkColor = useCallback((link: unknown) => {
+    const l = link as { relationshipType?: RelationshipType };
+    const relType = l.relationshipType || 'neutral';
     return RELATIONSHIP_COLORS[relType] + '80';
   }, []);
 
   const linkWidth = useCallback(
-    (link: { source?: string | { id?: string }; target?: string | { id?: string } }) => {
-      const sourceId = typeof link.source === 'string' ? link.source : link.source?.id;
-      const targetId = typeof link.target === 'string' ? link.target : link.target?.id;
+    (link: unknown) => {
+      const l = link as { source?: string | { id?: string }; target?: string | { id?: string } };
+      const sourceId = typeof l.source === 'string' ? l.source : l.source?.id;
+      const targetId = typeof l.target === 'string' ? l.target : l.target?.id;
       return activeNode?.id === sourceId || activeNode?.id === targetId ? 2 : 1;
     },
     [activeNode]
   );
 
   return (
-    <div ref={containerRef} className="relative h-full w-full bg-zinc-950">
-      <ForceGraph2D
-        ref={graphRef as React.RefObject<never>}
-        width={dimensions.width}
-        height={dimensions.height}
-        graphData={graphData}
-        nodeId="id"
-        nodeCanvasObject={nodeCanvasObject}
-        nodePointerAreaPaint={(node: { x?: number; y?: number }, color: string, ctx: CanvasRenderingContext2D) => {
-          ctx.fillStyle = color;
-          ctx.beginPath();
-          ctx.arc(node.x || 0, node.y || 0, 10, 0, 2 * Math.PI);
-          ctx.fill();
-        }}
-        linkColor={linkColor}
-        linkWidth={linkWidth}
-        linkDirectionalArrowLength={4}
-        linkDirectionalArrowRelPos={1}
-        linkCurvature={0.1}
-        onNodeClick={handleNodeClick}
-        onNodeHover={handleNodeHover}
-        onBackgroundClick={() => setActiveNode(null)}
-        enableNodeDrag={true}
-        enableZoomInteraction={true}
-        enablePanInteraction={true}
-        cooldownTicks={100}
-        d3AlphaDecay={0.02}
-        d3VelocityDecay={0.3}
-        backgroundColor="transparent"
-      />
-
-      <div className="absolute bottom-4 right-4 flex gap-2">
-        <button
-          onClick={handleZoomToFit}
-          className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-800/80 text-zinc-300 backdrop-blur-sm transition-all hover:bg-zinc-700 hover:text-white"
-          title="Zoom to fit"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-          </svg>
-        </button>
-      </div>
+    <div ref={containerRef} className="relative h-full w-full bg-zinc-950" suppressHydrationWarning>
+      {isMounted ? (
+        <ForceGraph2D
+          width={dimensions.width}
+          height={dimensions.height}
+          graphData={graphData}
+          nodeId="id"
+          nodeCanvasObject={nodeCanvasObject}
+          nodePointerAreaPaint={(node: { x?: number; y?: number }, color: string, ctx: CanvasRenderingContext2D) => {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(node.x || 0, node.y || 0, 10, 0, 2 * Math.PI);
+            ctx.fill();
+          }}
+          linkColor={linkColor}
+          linkWidth={linkWidth}
+          linkDirectionalArrowLength={4}
+          linkDirectionalArrowRelPos={1}
+          linkCurvature={0.1}
+          onNodeClick={handleNodeClick}
+          onNodeHover={handleNodeHover}
+          onBackgroundClick={() => setActiveNode(null)}
+          enableNodeDrag={!graphSettings.lockAllMovement}
+          enableZoomInteraction={true}
+          enablePanInteraction={true}
+          cooldownTicks={100}
+          d3AlphaDecay={0.02}
+          d3VelocityDecay={0.3}
+          backgroundColor="transparent"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-violet-500/30 border-t-violet-500" />
+            <span className="text-sm text-zinc-400">Loading graph...</span>
+          </div>
+        </div>
+      )}
 
       <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
         {Object.entries(GROUP_COLORS).map(([group, color]) => (

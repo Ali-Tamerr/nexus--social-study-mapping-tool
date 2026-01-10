@@ -1,123 +1,196 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+import type { Project, Node, Link, Tag, Attachment, Profile, RegisterRequest } from '@/types/knowledge';
 
-class ApiClient {
-  private sessionId: string;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7007';
 
-  constructor() {
-    this.sessionId = this.getOrCreateSessionId();
+async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.title || `API Error: ${response.status}`);
   }
 
-  private getOrCreateSessionId(): string {
-    if (typeof window === 'undefined') return '';
-    let sessionId = sessionStorage.getItem('nexus_session_id');
-    if (!sessionId) {
-      sessionId = crypto.randomUUID();
-      sessionStorage.setItem('nexus_session_id', sessionId);
-    }
-    return sessionId;
+  if (response.status === 204) {
+    return {} as T;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options?: RequestInit
-  ): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Session-Id': this.sessionId,
-        ...options?.headers,
-      },
-      ...options,
-    });
-
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
-
-    const text = await response.text();
-    return (text ? JSON.parse(text) : undefined) as T;
-  }
-
-  getSessionId(): string {
-    return this.sessionId;
-  }
-
-  async getGraphData(): Promise<import('@/types/knowledge').GraphData> {
-    return this.request('/graph');
-  }
-
-  async getNodes(): Promise<import('@/types/knowledge').Node[]> {
-    return this.request('/nodes');
-  }
-
-  async getNode(id: string): Promise<import('@/types/knowledge').Node> {
-    return this.request(`/nodes/${id}`);
-  }
-
-  async createNode(
-    node: Omit<import('@/types/knowledge').Node, 'id' | 'createdAt' | 'updatedAt'>
-  ): Promise<import('@/types/knowledge').Node> {
-    return this.request('/nodes', {
-      method: 'POST',
-      body: JSON.stringify(node),
-    });
-  }
-
-  async updateNode(
-    id: string,
-    updates: Partial<import('@/types/knowledge').Node>
-  ): Promise<import('@/types/knowledge').Node> {
-    return this.request(`/nodes/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
-  }
-
-  async deleteNode(id: string): Promise<void> {
-    return this.request(`/nodes/${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  async getLinks(): Promise<import('@/types/knowledge').Link[]> {
-    return this.request('/links');
-  }
-
-  async createLink(
-    link: Omit<import('@/types/knowledge').Link, 'id'>
-  ): Promise<import('@/types/knowledge').Link> {
-    return this.request('/links', {
-      method: 'POST',
-      body: JSON.stringify(link),
-    });
-  }
-
-  async deleteLink(id: string): Promise<void> {
-    return this.request(`/links/${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  async searchNodes(query: string): Promise<import('@/types/knowledge').Node[]> {
-    return this.request(`/nodes/search?q=${encodeURIComponent(query)}`);
-  }
-
-  async getPresence(): Promise<import('@/types/knowledge').PresenceState[]> {
-    return this.request('/presence');
-  }
-
-  async updatePresence(nodeId: string | null): Promise<void> {
-    return this.request('/presence', {
-      method: 'POST',
-      body: JSON.stringify({ nodeId }),
-    });
-  }
-
-  async leavePresence(): Promise<void> {
-    return this.request('/presence', {
-      method: 'DELETE',
-    });
-  }
+  return response.json();
 }
 
-export const apiClient = new ApiClient();
+export const api = {
+  auth: {
+    register: (data: RegisterRequest) =>
+      fetchApi<Profile>('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
+
+  projects: {
+    getByUser: (userId: string) =>
+      fetchApi<Project[]>(`/api/projects?userId=${userId}`),
+    
+    getById: (id: string) =>
+      fetchApi<Project>(`/api/projects/${id}`),
+    
+    create: (data: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) =>
+      fetchApi<Project>('/api/projects', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    
+    update: (id: string, data: Partial<Project>) =>
+      fetchApi<Project>(`/api/projects/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    
+    delete: (id: string) =>
+      fetchApi<void>(`/api/projects/${id}`, { method: 'DELETE' }),
+  },
+
+  nodes: {
+    getByProject: (projectId: string) =>
+      fetchApi<Node[]>(`/api/nodes?projectId=${projectId}`),
+    
+    getByUser: (userId: string) =>
+      fetchApi<Node[]>(`/api/nodes/user/${userId}`),
+    
+    getById: (id: string) =>
+      fetchApi<Node>(`/api/nodes/${id}`),
+    
+    search: (query: string) =>
+      fetchApi<Node[]>(`/api/nodes/search?query=${encodeURIComponent(query)}`),
+    
+    create: (data: Omit<Node, 'id' | 'createdAt' | 'updatedAt'>) =>
+      fetchApi<Node>('/api/nodes', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: data.title,
+          content: data.content,
+          excerpt: data.excerpt,
+          groupId: data.groupId,
+          projectId: data.projectId,
+          userId: data.userId,
+        }),
+      }),
+    
+    update: (id: string, data: Partial<Node>) =>
+      fetchApi<Node>(`/api/nodes/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    
+    delete: (id: string) =>
+      fetchApi<void>(`/api/nodes/${id}`, { method: 'DELETE' }),
+    
+    addTag: (nodeId: string, tagId: string) =>
+      fetchApi<void>(`/api/nodes/${nodeId}/tags/${tagId}`, { method: 'POST' }),
+    
+    removeTag: (nodeId: string, tagId: string) =>
+      fetchApi<void>(`/api/nodes/${nodeId}/tags/${tagId}`, { method: 'DELETE' }),
+  },
+
+  links: {
+    getAll: () =>
+      fetchApi<Link[]>('/api/links'),
+    
+    getByNode: (nodeId: string) =>
+      fetchApi<Link[]>(`/api/links/node/${nodeId}`),
+    
+    getByUser: (userId: string) =>
+      fetchApi<Link[]>(`/api/links/user/${userId}`),
+    
+    getById: (id: string) =>
+      fetchApi<Link>(`/api/links/${id}`),
+    
+    create: (data: { sourceId: string; targetId: string; relationshipType?: string; userId?: string }) =>
+      fetchApi<Link>('/api/links', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    
+    update: (id: string, data: Partial<Link>) =>
+      fetchApi<Link>(`/api/links/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    
+    delete: (id: string) =>
+      fetchApi<void>(`/api/links/${id}`, { method: 'DELETE' }),
+  },
+
+  tags: {
+    getAll: () =>
+      fetchApi<Tag[]>('/api/tags'),
+    
+    getByUser: (userId: string) =>
+      fetchApi<Tag[]>(`/api/tags/user/${userId}`),
+    
+    getById: (id: string) =>
+      fetchApi<Tag>(`/api/tags/${id}`),
+    
+    getByName: (name: string) =>
+      fetchApi<Tag>(`/api/tags/name/${encodeURIComponent(name)}`),
+    
+    create: (data: { name: string; color?: string; userId?: string }) =>
+      fetchApi<Tag>('/api/tags', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    
+    update: (id: string, data: Partial<Tag>) =>
+      fetchApi<Tag>(`/api/tags/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    
+    delete: (id: string) =>
+      fetchApi<void>(`/api/tags/${id}`, { method: 'DELETE' }),
+  },
+
+  attachments: {
+    getByNode: (nodeId: string) =>
+      fetchApi<Attachment[]>(`/api/attachments?nodeId=${nodeId}`),
+    
+    getById: (id: string) =>
+      fetchApi<Attachment>(`/api/attachments/${id}`),
+    
+    create: (data: { nodeId: string; fileName: string; fileUrl: string; contentType: string; fileSize: number; userId?: string }) =>
+      fetchApi<Attachment>('/api/attachments', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    
+    delete: (id: string) =>
+      fetchApi<void>(`/api/attachments/${id}`, { method: 'DELETE' }),
+  },
+
+  groups: {
+    getAll: () =>
+      fetchApi<{ id: number; name: string; color: string }[]>('/api/groups'),
+    
+    getById: (id: number) =>
+      fetchApi<{ id: number; name: string; color: string }>(`/api/groups/${id}`),
+  },
+
+  profiles: {
+    getById: (id: string) =>
+      fetchApi<Profile>(`/api/profiles/${id}`),
+    
+    getByEmail: (email: string) =>
+      fetchApi<Profile>(`/api/profiles/email/${encodeURIComponent(email)}`),
+    
+    update: (id: string, data: Partial<Profile>) =>
+      fetchApi<Profile>(`/api/profiles/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+  },
+};

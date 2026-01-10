@@ -1,14 +1,47 @@
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  userId?: string;
+  createdAt: string;
+  updatedAt: string;
+  nodes?: Node[];
+}
+
+export interface Attachment {
+  id: string;
+  nodeId: string;
+  fileName: string;
+  fileUrl: string;
+  contentType: string;
+  fileSize: number;
+  userId?: string;
+  createdAt: string;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  color?: string;
+  userId?: string;
+  createdAt: string;
+}
+
 export interface Node {
   id: string;
+  projectId?: string;
   title: string;
-  content: string;
-  excerpt: string;
-  tags: string[];
-  group: number;
+  content?: string;
+  excerpt?: string;
+  groupId: number;
+  userId?: string;
   createdAt: string;
   updatedAt: string;
   x?: number;
   y?: number;
+  tags?: Tag[];
+  attachments?: Attachment[];
 }
 
 export interface Link {
@@ -16,6 +49,8 @@ export interface Link {
   source: string;
   target: string;
   relationshipType: 'supports' | 'contradicts' | 'neutral';
+  userId?: string;
+  createdAt?: string;
 }
 
 export interface GraphData {
@@ -23,13 +58,9 @@ export interface GraphData {
   links: Link[];
 }
 
-export interface UnlinkedMention {
-  sourceNodeId: string;
-  sourceNodeTitle: string;
-  targetNodeId: string;
-  targetNodeTitle: string;
-  matchedText: string;
-  context: string;
+export interface GraphSettings {
+  freezeOthersOnDrag: boolean;
+  lockAllMovement: boolean;
 }
 
 export interface PresenceState {
@@ -37,6 +68,22 @@ export interface PresenceState {
   nodeId: string;
   userId: string;
   lastSeen: string;
+}
+
+export interface Profile {
+  id: string;
+  email?: string;
+  displayName?: string;
+  avatarUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  displayName?: string;
+  avatarUrl?: string;
+  password: string;
 }
 
 export type RelationshipType = Link['relationshipType'];
