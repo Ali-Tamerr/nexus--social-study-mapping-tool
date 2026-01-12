@@ -195,11 +195,60 @@ export function GraphCanvas() {
       return [];
     }
   });
+  const [undoStack, setUndoStack] = useState<DrawnShape[][]>([]);
+  const [redoStack, setRedoStack] = useState<DrawnShape[][]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [currentPoints, setCurrentPoints] = useState<{ x: number; y: number }[]>([]);
 
   const isDrawingTool = ['pen', 'rectangle', 'diamond', 'circle', 'arrow', 'line'].includes(graphSettings.activeTool);
+
+  const undo = useCallback(() => {
+    if (undoStack.length === 0) return;
+    const prevState = undoStack[undoStack.length - 1];
+    setRedoStack(prev => [...prev, shapes]);
+    setShapes(prevState);
+    setUndoStack(prev => prev.slice(0, -1));
+
+    setTimeout(() => {
+      if (graphRef.current) {
+        const z = graphRef.current.zoom();
+        graphRef.current.zoom(z * 1.00001, 0);
+        graphRef.current.zoom(z, 0);
+      }
+    }, 10);
+  }, [undoStack, shapes]);
+
+  const redo = useCallback(() => {
+    if (redoStack.length === 0) return;
+    const nextState = redoStack[redoStack.length - 1];
+    setUndoStack(prev => [...prev, shapes]);
+    setShapes(nextState);
+    setRedoStack(prev => prev.slice(0, -1));
+
+    setTimeout(() => {
+      if (graphRef.current) {
+        const z = graphRef.current.zoom();
+        graphRef.current.zoom(z * 1.00001, 0);
+        graphRef.current.zoom(z, 0);
+      }
+    }, 10);
+  }, [redoStack, shapes]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
 
   useEffect(() => {
     if (isPreviewMode && !prevPreviewModeRef.current && graphRef.current) {
@@ -214,6 +263,8 @@ export function GraphCanvas() {
 
   useEffect(() => {
     if (graphSettings.activeTool === 'eraser') {
+      setUndoStack(prev => [...prev, shapes]);
+      setRedoStack([]);
       setShapes([]);
     }
   }, [graphSettings.activeTool]);
@@ -366,6 +417,8 @@ export function GraphCanvas() {
       style: graphSettings.strokeStyle,
     };
 
+    setUndoStack(prev => [...prev, shapes]);
+    setRedoStack([]);
     setShapes(prev => [...prev, newShape]);
     setIsDrawing(false);
     setStartPoint(null);

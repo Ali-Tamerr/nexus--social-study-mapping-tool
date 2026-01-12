@@ -3,13 +3,18 @@
 import {
   Lock, Unlock, Play, Pause,
   Hand, MousePointer2, Square, Diamond, Circle,
-  ArrowRight, Minus, Pencil, Type, Image, Eraser
+  ArrowRight, Minus, Pencil, Type, Image, Eraser,
+  Undo2, Redo2
 } from 'lucide-react';
 import { GraphSettings, DrawingTool } from '@/types/knowledge';
 
 interface GraphControlsProps {
   settings: GraphSettings;
   onSettingsChange: (settings: Partial<GraphSettings>) => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
 const drawingTools: { id: DrawingTool; icon: typeof Hand; label: string }[] = [
@@ -26,7 +31,7 @@ const drawingTools: { id: DrawingTool; icon: typeof Hand; label: string }[] = [
   { id: 'eraser', icon: Eraser, label: 'Eraser' },
 ];
 
-export function GraphControls({ settings, onSettingsChange }: GraphControlsProps) {
+export function GraphControls({ settings, onSettingsChange, onUndo, onRedo, canUndo = false, canRedo = false }: GraphControlsProps) {
   const setActiveTool = (tool: DrawingTool) => {
     onSettingsChange({ activeTool: tool });
   };
@@ -59,18 +64,50 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
         </div>
       )}
 
-      <div className="absolute right-4 top-4 z-30 flex items-center gap-2 rounded-xl bg-zinc-900/90 p-2 backdrop-blur-sm border border-zinc-800">
-        <PreviewControl
-          enabled={settings.isPreviewMode}
-          onToggle={() => onSettingsChange({ isPreviewMode: !settings.isPreviewMode })}
-        />
+      <div className="absolute right-4 top-4 z-30 flex flex-col gap-2">
+        <div className="flex items-center gap-2 rounded-xl bg-zinc-900/90 p-2 backdrop-blur-sm border border-zinc-800">
+          <PreviewControl
+            enabled={settings.isPreviewMode}
+            onToggle={() => onSettingsChange({ isPreviewMode: !settings.isPreviewMode })}
+          />
 
-        <div className="h-6 w-px bg-zinc-700" />
+          <div className="h-6 w-px bg-zinc-700" />
 
-        <LockControl
-          enabled={settings.lockAllMovement}
-          onToggle={() => onSettingsChange({ lockAllMovement: !settings.lockAllMovement })}
-        />
+          <LockControl
+            enabled={settings.lockAllMovement}
+            onToggle={() => onSettingsChange({ lockAllMovement: !settings.lockAllMovement })}
+          />
+        </div>
+
+        <div className="flex items-center gap-2 rounded-xl bg-zinc-900/90 p-2 backdrop-blur-sm border border-zinc-800">
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${canUndo
+                ? 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700'
+                : 'bg-zinc-800/50 text-zinc-600 cursor-not-allowed'
+              }`}
+            title="Undo (Ctrl+Z)"
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+            <span>Undo</span>
+          </button>
+
+          <div className="h-6 w-px bg-zinc-700" />
+
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${canRedo
+                ? 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700'
+                : 'bg-zinc-800/50 text-zinc-600 cursor-not-allowed'
+              }`}
+            title="Redo (Ctrl+Y)"
+          >
+            <Redo2 className="h-3.5 w-3.5" />
+            <span>Redo</span>
+          </button>
+        </div>
       </div>
     </>
   );
