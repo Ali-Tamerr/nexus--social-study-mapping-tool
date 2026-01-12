@@ -1,15 +1,6 @@
 'use client';
 
-import { DrawingTool, StrokeStyle } from '@/types/knowledge';
-
-export interface DrawnShape {
-    id: string;
-    type: DrawingTool;
-    points: { x: number; y: number }[];
-    color: string;
-    width: number;
-    style: StrokeStyle;
-}
+import { DrawingTool, StrokeStyle, DrawnShape } from '@/types/knowledge';
 
 export function drawShapeOnContext(
     ctx: CanvasRenderingContext2D, 

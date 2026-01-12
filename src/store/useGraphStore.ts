@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Project, Node, Link, GraphData, GraphSettings, Tag, Attachment } from '@/types/knowledge';
+import type { Project, Node, Link, GraphData, GraphSettings, Tag, Attachment, DrawnShape } from '@/types/knowledge';
 
 interface AppState {
   projects: Project[];
@@ -19,6 +19,11 @@ interface AppState {
   currentUserId: string | null;
   hasHydrated: boolean;
   
+  // Drawing state
+  shapes: DrawnShape[];
+  undoStack: DrawnShape[][];
+  redoStack: DrawnShape[][];
+
   setHasHydrated: (hydrated: boolean) => void;
   setCurrentUserId: (userId: string | null) => void;
   setProjects: (projects: Project[]) => void;
@@ -26,6 +31,13 @@ interface AppState {
   updateProject: (id: string, updates: Partial<Project>) => void;
   deleteProject: (id: string) => void;
   setCurrentProject: (project: Project | null) => void;
+  
+  // Drawing actions
+  setShapes: (shapes: DrawnShape[]) => void;
+  addShape: (shape: DrawnShape) => void;
+  undo: () => void;
+  redo: () => void;
+  clearShapes: () => void;
   
   setNodes: (nodes: Node[]) => void;
   setLinks: (links: Link[]) => void;
@@ -75,6 +87,11 @@ export const useGraphStore = create<AppState>()(
       },
       currentUserId: null,
       hasHydrated: false,
+
+      // Drawing state
+      shapes: [],
+      undoStack: [],
+      redoStack: [],
 
       setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
 
@@ -200,6 +217,41 @@ export const useGraphStore = create<AppState>()(
   setGraphSettings: (settings) => set((state) => ({
     graphSettings: { ...state.graphSettings, ...settings }
   })),
+
+  // Drawing actions
+  setShapes: (shapes) => set({ shapes }),
+  
+  addShape: (shape) => set((state) => ({
+    undoStack: [...state.undoStack, state.shapes],
+    redoStack: [],
+    shapes: [...state.shapes, shape],
+  })),
+  
+  undo: () => set((state) => {
+    if (state.undoStack.length === 0) return state;
+    const prevState = state.undoStack[state.undoStack.length - 1];
+    return {
+      redoStack: [...state.redoStack, state.shapes],
+      shapes: prevState,
+      undoStack: state.undoStack.slice(0, -1),
+    };
+  }),
+  
+  redo: () => set((state) => {
+    if (state.redoStack.length === 0) return state;
+    const nextState = state.redoStack[state.redoStack.length - 1];
+    return {
+      undoStack: [...state.undoStack, state.shapes],
+      shapes: nextState,
+      redoStack: state.redoStack.slice(0, -1),
+    };
+  }),
+  
+  clearShapes: () => set((state) => ({
+    undoStack: [...state.undoStack, state.shapes],
+    redoStack: [],
+    shapes: [],
+  })),
     }),
     {
       name: 'nexus-graph',
@@ -207,7 +259,9 @@ export const useGraphStore = create<AppState>()(
         currentProject: state.currentProject,
         projects: state.projects,
         graphSettings: state.graphSettings,
+        shapes: state.shapes,
       }),
+
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },

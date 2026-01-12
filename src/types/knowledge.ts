@@ -73,6 +73,15 @@ export type DrawingTool =
 
 export type StrokeStyle = 'solid' | 'dashed' | 'dotted';
 
+export interface DrawnShape {
+  id: string;
+  type: DrawingTool;
+  points: { x: number; y: number }[];
+  color: string;
+  width: number;
+  style: StrokeStyle;
+}
+
 export interface GraphSettings {
   isPreviewMode: boolean;
   lockAllMovement: boolean;

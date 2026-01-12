@@ -8,13 +8,11 @@ import {
 } from 'lucide-react';
 import { GraphSettings, DrawingTool } from '@/types/knowledge';
 
+import { useGraphStore } from '@/store/useGraphStore';
+
 interface GraphControlsProps {
   settings: GraphSettings;
   onSettingsChange: (settings: Partial<GraphSettings>) => void;
-  onUndo?: () => void;
-  onRedo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
 }
 
 const drawingTools: { id: DrawingTool; icon: typeof Hand; label: string }[] = [
@@ -31,7 +29,12 @@ const drawingTools: { id: DrawingTool; icon: typeof Hand; label: string }[] = [
   { id: 'eraser', icon: Eraser, label: 'Eraser' },
 ];
 
-export function GraphControls({ settings, onSettingsChange, onUndo, onRedo, canUndo = false, canRedo = false }: GraphControlsProps) {
+export function GraphControls({ settings, onSettingsChange }: GraphControlsProps) {
+  const undo = useGraphStore(state => state.undo);
+  const redo = useGraphStore(state => state.redo);
+  const canUndo = useGraphStore(state => state.undoStack.length > 0);
+  const canRedo = useGraphStore(state => state.redoStack.length > 0);
+
   const setActiveTool = (tool: DrawingTool) => {
     onSettingsChange({ activeTool: tool });
   };
@@ -81,11 +84,11 @@ export function GraphControls({ settings, onSettingsChange, onUndo, onRedo, canU
 
         <div className="flex items-center gap-2 rounded-xl bg-zinc-900/90 p-2 backdrop-blur-sm border border-zinc-800">
           <button
-            onClick={onUndo}
+            onClick={undo}
             disabled={!canUndo}
-            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${canUndo
-                ? 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700'
-                : 'bg-zinc-800/50 text-zinc-600 cursor-not-allowed'
+            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${canUndo
+              ? 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700'
+              : 'bg-zinc-800/50 text-zinc-600 cursor-not-allowed'
               }`}
             title="Undo (Ctrl+Z)"
           >
@@ -96,11 +99,11 @@ export function GraphControls({ settings, onSettingsChange, onUndo, onRedo, canU
           <div className="h-6 w-px bg-zinc-700" />
 
           <button
-            onClick={onRedo}
+            onClick={redo}
             disabled={!canRedo}
-            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${canRedo
-                ? 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700'
-                : 'bg-zinc-800/50 text-zinc-600 cursor-not-allowed'
+            className={`flex items-center justify-center gap-2 flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${canRedo
+              ? 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700'
+              : 'bg-zinc-800/50 text-zinc-600 cursor-not-allowed'
               }`}
             title="Redo (Ctrl+Y)"
           >

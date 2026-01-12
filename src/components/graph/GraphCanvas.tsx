@@ -6,7 +6,8 @@ import { useGraphStore, filterNodes } from '@/store/useGraphStore';
 import { GROUP_COLORS, RELATIONSHIP_COLORS } from '@/types/knowledge';
 import type { RelationshipType } from '@/types/knowledge';
 import { DrawingProperties } from './DrawingProperties';
-import { DrawnShape, drawShapeOnContext } from './drawingUtils';
+import { drawShapeOnContext } from './drawingUtils';
+import { DrawnShape } from '@/types/knowledge';
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
@@ -186,55 +187,28 @@ export function GraphCanvas() {
   const prevPreviewModeRef = useRef(isPreviewMode);
   const [graphTransform, setGraphTransform] = useState({ x: 0, y: 0, k: 1 });
 
-  const [shapes, setShapes] = useState<DrawnShape[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const saved = localStorage.getItem('nexus-drawings');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [undoStack, setUndoStack] = useState<DrawnShape[][]>([]);
-  const [redoStack, setRedoStack] = useState<DrawnShape[][]>([]);
+  const shapes = useGraphStore(state => state.shapes);
+  const addShape = useGraphStore(state => state.addShape);
+  const undo = useGraphStore(state => state.undo);
+  const redo = useGraphStore(state => state.redo);
+  const clearShapes = useGraphStore(state => state.clearShapes);
+
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [currentPoints, setCurrentPoints] = useState<{ x: number; y: number }[]>([]);
 
   const isDrawingTool = ['pen', 'rectangle', 'diamond', 'circle', 'arrow', 'line'].includes(graphSettings.activeTool);
 
-  const undo = useCallback(() => {
-    if (undoStack.length === 0) return;
-    const prevState = undoStack[undoStack.length - 1];
-    setRedoStack(prev => [...prev, shapes]);
-    setShapes(prevState);
-    setUndoStack(prev => prev.slice(0, -1));
+  // Reheat simulation for undo/redo
+  useEffect(() => {
+    if (graphRef.current) {
+      const z = graphRef.current.zoom();
+      graphRef.current.zoom(z * 1.00001, 0);
+      graphRef.current.zoom(z, 0);
+    }
+  }, [shapes]);
 
-    setTimeout(() => {
-      if (graphRef.current) {
-        const z = graphRef.current.zoom();
-        graphRef.current.zoom(z * 1.00001, 0);
-        graphRef.current.zoom(z, 0);
-      }
-    }, 10);
-  }, [undoStack, shapes]);
-
-  const redo = useCallback(() => {
-    if (redoStack.length === 0) return;
-    const nextState = redoStack[redoStack.length - 1];
-    setUndoStack(prev => [...prev, shapes]);
-    setShapes(nextState);
-    setRedoStack(prev => prev.slice(0, -1));
-
-    setTimeout(() => {
-      if (graphRef.current) {
-        const z = graphRef.current.zoom();
-        graphRef.current.zoom(z * 1.00001, 0);
-        graphRef.current.zoom(z, 0);
-      }
-    }, 10);
-  }, [redoStack, shapes]);
-
+  // Handle Undo/Redo shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
@@ -250,6 +224,8 @@ export function GraphCanvas() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo]);
 
+
+
   useEffect(() => {
     if (isPreviewMode && !prevPreviewModeRef.current && graphRef.current) {
       graphRef.current.d3ReheatSimulation?.();
@@ -258,16 +234,10 @@ export function GraphCanvas() {
   }, [isPreviewMode]);
 
   useEffect(() => {
-    localStorage.setItem('nexus-drawings', JSON.stringify(shapes));
-  }, [shapes]);
-
-  useEffect(() => {
     if (graphSettings.activeTool === 'eraser') {
-      setUndoStack(prev => [...prev, shapes]);
-      setRedoStack([]);
-      setShapes([]);
+      clearShapes();
     }
-  }, [graphSettings.activeTool]);
+  }, [graphSettings.activeTool, clearShapes]);
 
 
 
@@ -417,9 +387,7 @@ export function GraphCanvas() {
       style: graphSettings.strokeStyle,
     };
 
-    setUndoStack(prev => [...prev, shapes]);
-    setRedoStack([]);
-    setShapes(prev => [...prev, newShape]);
+    addShape(newShape);
     setIsDrawing(false);
     setStartPoint(null);
     setCurrentPoints([]);
