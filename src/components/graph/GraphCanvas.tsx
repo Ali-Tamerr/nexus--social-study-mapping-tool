@@ -240,6 +240,7 @@ export function GraphCanvas() {
 
   const [selectedShapeIds, setSelectedShapeIds] = useState<Set<string>>(new Set());
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
+  const [isHoveringShape, setIsHoveringShape] = useState(false);
   const [dragStartWorld, setDragStartWorld] = useState<{ x: number; y: number } | null>(null);
 
   const isDrawingTool = ['pen', 'rectangle', 'diamond', 'circle', 'arrow', 'line', 'eraser'].includes(graphSettings.activeTool);
@@ -324,6 +325,21 @@ export function GraphCanvas() {
     const coords = graphRef.current.screen2GraphCoords(screenX, screenY);
     return { x: coords.x, y: coords.y };
   }, [graphTransform]);
+
+  const handleContainerMouseMove = useCallback((e: React.MouseEvent) => {
+    if (graphSettings.activeTool !== 'select') return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const worldPoint = screenToWorld(screenX, screenY);
+    const scale = graphTransform.k || 1;
+
+    const isNear = shapes.some(s => isPointNearShape(worldPoint, s, scale, 10));
+    if (isNear !== isHoveringShape) {
+      setIsHoveringShape(isNear);
+    }
+  }, [graphSettings.activeTool, graphTransform, shapes, screenToWorld, isHoveringShape]);
 
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
     if (!isDrawingTool) return;
@@ -529,7 +545,7 @@ export function GraphCanvas() {
   }, [shapes, isDrawing, currentPoints, graphSettings.activeTool, graphSettings.strokeColor, graphSettings.strokeWidth, graphSettings.strokeStyle, selectedShapeIds]);
 
   return (
-    <div ref={containerRef} className="relative h-full w-full bg-zinc-950" suppressHydrationWarning>
+    <div ref={containerRef} className="relative h-full w-full bg-zinc-950" suppressHydrationWarning onMouseMove={handleContainerMouseMove}>
       {isMounted ? (
         <>
           <ForceGraph2D
@@ -581,7 +597,7 @@ export function GraphCanvas() {
           )}
           {isSelectTool && (
             <div
-              className="absolute inset-0 z-20 cursor-default"
+              className={`absolute inset-0 z-20 cursor-default ${isHoveringShape || isDraggingSelection ? 'pointer-events-auto' : 'pointer-events-none'}`}
               onMouseDown={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const screenX = e.clientX - rect.left;
