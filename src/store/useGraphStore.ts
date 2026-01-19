@@ -36,6 +36,7 @@ interface AppState {
   setShapes: (shapes: DrawnShape[]) => void;
   addShape: (shape: DrawnShape) => void;
   updateShape: (id: string, updates: Partial<DrawnShape>) => void;
+  deleteShape: (id: string) => void;
   undo: () => void;
   redo: () => void;
   clearShapes: () => void;
@@ -238,6 +239,12 @@ export const useGraphStore = create<AppState>()(
 
   updateShape: (id, updates) => set((state) => ({
     shapes: state.shapes.map(s => s.id === id ? { ...s, ...updates } : s),
+  })),
+  
+  deleteShape: (id) => set((state) => ({
+    undoStack: [...state.undoStack, state.shapes],
+    redoStack: [],
+    shapes: state.shapes.filter(s => s.id !== id),
   })),
   
   undo: () => set((state) => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Layers, Circle, Square, Diamond, Minus, ArrowRight, Type, PenTool, ChevronDown, ChevronRight, MapPin, Eye, EyeOff } from 'lucide-react';
+import { X, Layers, Circle, Square, Diamond, Minus, ArrowRight, Type, PenTool, ChevronDown, ChevronRight, MapPin, Trash2 } from 'lucide-react';
 import { DrawnShape, Node as NodeType } from '@/types/knowledge';
 
 interface SelectionPaneProps {
@@ -11,6 +11,8 @@ interface SelectionPaneProps {
     onLocateShape: (shapeId: string, x: number, y: number) => void;
     onSelectNode: (nodeId: string) => void;
     onSelectShape: (shapeId: string) => void;
+    onDeleteNode: (nodeId: string) => void;
+    onDeleteShape: (shapeId: string) => void;
     selectedNodeIds: Set<string>;
     selectedShapeIds: Set<string>;
     onClose: () => void;
@@ -63,6 +65,8 @@ export function SelectionPane({
     onLocateShape,
     onSelectNode,
     onSelectShape,
+    onDeleteNode,
+    onDeleteShape,
     selectedNodeIds,
     selectedShapeIds,
     onClose,
@@ -125,6 +129,16 @@ export function SelectionPane({
                                         >
                                             <MapPin className="w-3.5 h-3.5" />
                                         </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDeleteNode(node.id);
+                                            }}
+                                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-600 transition-all"
+                                            title="Delete"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
                                     </div>
                                 ))
                             )}
@@ -171,6 +185,16 @@ export function SelectionPane({
                                                 title="Locate"
                                             >
                                                 <MapPin className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onDeleteShape(shape.id);
+                                                }}
+                                                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-600 transition-all"
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
                                             </button>
                                         </div>
                                     );

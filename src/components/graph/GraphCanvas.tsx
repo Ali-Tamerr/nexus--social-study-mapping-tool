@@ -277,6 +277,8 @@ export function GraphCanvas() {
   const setShapes = useGraphStore(state => state.setShapes);
   const addShape = useGraphStore(state => state.addShape);
   const updateShape = useGraphStore(state => state.updateShape);
+  const deleteShape = useGraphStore(state => state.deleteShape);
+  const deleteNode = useGraphStore(state => state.deleteNode);
   const undo = useGraphStore(state => state.undo);
   const redo = useGraphStore(state => state.redo);
   const pushToUndoStack = useGraphStore(state => state.pushToUndoStack);
@@ -1671,6 +1673,15 @@ export function GraphCanvas() {
             setSelectedShapeIds(new Set([shapeId]));
             setSelectedNodeIds(new Set());
             setActiveNode(null);
+          }}
+          onDeleteNode={(nodeId) => {
+            deleteNode(nodeId);
+            setSelectedNodeIds(new Set());
+            setActiveNode(null);
+          }}
+          onDeleteShape={(shapeId) => {
+            deleteShape(shapeId);
+            setSelectedShapeIds(new Set());
           }}
         />
       )}
