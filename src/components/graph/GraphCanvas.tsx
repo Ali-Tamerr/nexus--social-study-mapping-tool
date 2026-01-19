@@ -45,6 +45,7 @@ export function GraphCanvas() {
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
   const [selectedLink, setSelectedLink] = useState<any | null>(null);
   const [hoveredLink, setHoveredLink] = useState<any | null>(null);
+  const [isOutsideContent, setIsOutsideContent] = useState(false);
 
   const filteredNodes = useMemo(
     () => filterNodes(nodes, searchQuery),
@@ -327,9 +328,8 @@ export function GraphCanvas() {
   }, [currentProject?.id, apiDrawingToShape, setShapes]);
 
   useEffect(() => {
-    fetch('/api/groups')
-      .then(res => res.json())
-      .then((backendGroups: Array<{ id: number; name: string; color: string }>) => {
+    api.groups.getAll()
+      .then((backendGroups) => {
         const groupsWithOrder = backendGroups.map((g, i) => ({ ...g, order: i }));
         setGroups(groupsWithOrder);
         if (groupsWithOrder.length > 0 && !activeGroupId) {
@@ -338,6 +338,75 @@ export function GraphCanvas() {
       })
       .catch(err => console.error('Failed to load groups:', err));
   }, [setGroups, setActiveGroupId, activeGroupId]);
+
+  useEffect(() => {
+    const checkIfOutsideContent = () => {
+      if (!graphRef.current) return;
+
+      const allPoints: { x: number; y: number }[] = [];
+
+      const currentGraphNodes = graphData.nodes as Array<{ x?: number; y?: number }>;
+      currentGraphNodes.forEach(n => {
+        if (n.x !== undefined && n.y !== undefined) {
+          allPoints.push({ x: n.x, y: n.y });
+        }
+      });
+
+      shapes.forEach(shape => {
+        shape.points.forEach(p => {
+          allPoints.push({ x: p.x, y: p.y });
+        });
+      });
+
+      if (allPoints.length === 0) {
+        setIsOutsideContent(false);
+        return;
+      }
+
+      const minX = Math.min(...allPoints.map(p => p.x));
+      const maxX = Math.max(...allPoints.map(p => p.x));
+      const minY = Math.min(...allPoints.map(p => p.y));
+      const maxY = Math.max(...allPoints.map(p => p.y));
+
+      const padding = 200;
+      const contentBounds = {
+        minX: minX - padding,
+        maxX: maxX + padding,
+        minY: minY - padding,
+        maxY: maxY + padding,
+      };
+
+      try {
+        const center = graphRef.current.centerAt();
+        const zoom = graphRef.current.zoom();
+        const viewWidth = dimensions.width / zoom;
+        const viewHeight = dimensions.height / zoom;
+
+        const viewBounds = {
+          minX: center.x - viewWidth / 2,
+          maxX: center.x + viewWidth / 2,
+          minY: center.y - viewHeight / 2,
+          maxY: center.y + viewHeight / 2,
+        };
+
+        const isIntersecting = !(
+          viewBounds.maxX < contentBounds.minX ||
+          viewBounds.minX > contentBounds.maxX ||
+          viewBounds.maxY < contentBounds.minY ||
+          viewBounds.minY > contentBounds.maxY
+        );
+
+        setIsOutsideContent(!isIntersecting);
+      } catch (e) {
+        setIsOutsideContent(false);
+      }
+    };
+
+    const interval = setInterval(checkIfOutsideContent, 500);
+    checkIfOutsideContent();
+
+    return () => clearInterval(interval);
+  }, [graphData.nodes, shapes, dimensions]);
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
@@ -1611,42 +1680,44 @@ export function GraphCanvas() {
         onReorderGroups={setGroups}
       />
 
-      <button
-        onClick={() => {
-          if (!graphRef.current) return;
+      {isOutsideContent && (
+        <button
+          onClick={() => {
+            if (!graphRef.current) return;
 
-          const allPoints: { x: number; y: number }[] = [];
+            const allPoints: { x: number; y: number }[] = [];
 
-          const currentGraphNodes = graphData.nodes as Array<{ x?: number; y?: number }>;
-          currentGraphNodes.forEach(n => {
-            if (n.x !== undefined && n.y !== undefined) {
-              allPoints.push({ x: n.x, y: n.y });
-            }
-          });
-
-          shapesRef.current.forEach(shape => {
-            shape.points.forEach(p => {
-              allPoints.push({ x: p.x, y: p.y });
+            const currentGraphNodes = graphData.nodes as Array<{ x?: number; y?: number }>;
+            currentGraphNodes.forEach(n => {
+              if (n.x !== undefined && n.y !== undefined) {
+                allPoints.push({ x: n.x, y: n.y });
+              }
             });
-          });
 
-          if (allPoints.length === 0) return;
+            shapesRef.current.forEach(shape => {
+              shape.points.forEach(p => {
+                allPoints.push({ x: p.x, y: p.y });
+              });
+            });
 
-          const sumX = allPoints.reduce((acc, p) => acc + p.x, 0);
-          const sumY = allPoints.reduce((acc, p) => acc + p.y, 0);
-          const centerX = sumX / allPoints.length;
-          const centerY = sumY / allPoints.length;
+            if (allPoints.length === 0) return;
 
-          graphRef.current.centerAt(centerX, centerY, 500);
-          graphRef.current.zoom(1, 500);
-        }}
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-full bg-zinc-800/90 px-4 py-2 text-sm text-white shadow-lg backdrop-blur-sm border border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600 transition-all"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
-        Go back to content
-      </button>
+            const sumX = allPoints.reduce((acc, p) => acc + p.x, 0);
+            const sumY = allPoints.reduce((acc, p) => acc + p.y, 0);
+            const centerX = sumX / allPoints.length;
+            const centerY = sumY / allPoints.length;
+
+            graphRef.current.centerAt(centerX, centerY, 500);
+            graphRef.current.zoom(1, 500);
+          }}
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-full bg-zinc-800/90 px-4 py-2 text-sm text-white shadow-lg backdrop-blur-sm border border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600 transition-all"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          Go back to content
+        </button>
+      )}
 
       <button
         onClick={() => setShowSelectionPane(!showSelectionPane)}
@@ -1661,57 +1732,61 @@ export function GraphCanvas() {
         Objects
       </button>
 
-      {showSelectionPane && (
-        <SelectionPane
-          nodes={nodes}
-          shapes={shapes}
-          selectedNodeIds={selectedNodeIds}
-          selectedShapeIds={selectedShapeIds}
-          onClose={() => setShowSelectionPane(false)}
-          onLocateNode={(nodeId, x, y) => {
-            if (graphRef.current) {
-              graphRef.current.centerAt(x, y, 500);
-              graphRef.current.zoom(1.5, 500);
-            }
-          }}
-          onLocateShape={(shapeId, x, y) => {
-            if (graphRef.current) {
-              graphRef.current.centerAt(x, y, 500);
-              graphRef.current.zoom(1.5, 500);
-            }
-          }}
-          onSelectNode={(nodeId) => {
-            const node = nodes.find(n => n.id === nodeId);
-            if (node) {
-              setActiveNode(node);
-              setSelectedNodeIds(new Set([nodeId]));
+      {
+        showSelectionPane && (
+          <SelectionPane
+            nodes={nodes}
+            shapes={shapes}
+            selectedNodeIds={selectedNodeIds}
+            selectedShapeIds={selectedShapeIds}
+            onClose={() => setShowSelectionPane(false)}
+            onLocateNode={(nodeId, x, y) => {
+              if (graphRef.current) {
+                graphRef.current.centerAt(x, y, 500);
+                graphRef.current.zoom(1.5, 500);
+              }
+            }}
+            onLocateShape={(shapeId, x, y) => {
+              if (graphRef.current) {
+                graphRef.current.centerAt(x, y, 500);
+                graphRef.current.zoom(1.5, 500);
+              }
+            }}
+            onSelectNode={(nodeId) => {
+              const node = nodes.find(n => n.id === nodeId);
+              if (node) {
+                setActiveNode(node);
+                setSelectedNodeIds(new Set([nodeId]));
+                setSelectedShapeIds(new Set());
+              }
+            }}
+            onSelectShape={(shapeId) => {
+              setSelectedShapeIds(new Set([shapeId]));
+              setSelectedNodeIds(new Set());
+              setActiveNode(null);
+            }}
+            onDeleteNode={(nodeId) => {
+              deleteNode(nodeId);
+              setSelectedNodeIds(new Set());
+              setActiveNode(null);
+            }}
+            onDeleteShape={(shapeId) => {
+              deleteShape(shapeId);
               setSelectedShapeIds(new Set());
-            }
-          }}
-          onSelectShape={(shapeId) => {
-            setSelectedShapeIds(new Set([shapeId]));
-            setSelectedNodeIds(new Set());
-            setActiveNode(null);
-          }}
-          onDeleteNode={(nodeId) => {
-            deleteNode(nodeId);
-            setSelectedNodeIds(new Set());
-            setActiveNode(null);
-          }}
-          onDeleteShape={(shapeId) => {
-            deleteShape(shapeId);
-            setSelectedShapeIds(new Set());
-          }}
-        />
-      )}
+            }}
+          />
+        )
+      }
 
-      {selectedLink && (
-        <ConnectionProperties
-          link={selectedLink}
-          onClose={() => setSelectedLink(null)}
-        />
-      )}
-    </div>
+      {
+        selectedLink && (
+          <ConnectionProperties
+            link={selectedLink}
+            onClose={() => setSelectedLink(null)}
+          />
+        )
+      }
+    </div >
   );
 }
 
