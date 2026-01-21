@@ -21,9 +21,9 @@ interface ApiDrawing {
     color: string;
     width: number;
     style: string;
-    text?: string;
-    fontSize?: number;
-    fontFamily?: string;
+    text?: string | null;
+    fontSize?: number | null;
+    fontFamily?: string | null;
 }
 
 function adjustBrightness(hex: string, percent: number): string {
