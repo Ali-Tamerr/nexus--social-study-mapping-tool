@@ -631,18 +631,18 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     if (!groups || groups.length === 0) return;
     const validGroupIds = new Set(groups.map(g => g.id));
     // Remove nodes with invalid groupId
-    const validNodes = nodes.filter(n => validGroupIds.has(n.groupId));
+    const validNodes = nodes.filter(n => n.groupId === undefined || validGroupIds.has(n.groupId));
     if (validNodes.length !== nodes.length) {
-      const toDelete = nodes.filter(n => !validGroupIds.has(n.groupId));
+      const toDelete = nodes.filter(n => n.groupId !== undefined && !validGroupIds.has(n.groupId));
       toDelete.forEach(n => {
         api.nodes.delete(n.id).catch(err => console.error('Failed to delete node with invalid group:', err));
       });
       useGraphStore.getState().setNodes(validNodes);
     }
     // Remove shapes with invalid groupId
-    const validShapes = shapes.filter(s => validGroupIds.has(s.groupId));
+    const validShapes = shapes.filter(s => s.groupId === undefined || validGroupIds.has(s.groupId));
     if (validShapes.length !== shapes.length) {
-      const toDelete = shapes.filter(s => !validGroupIds.has(s.groupId));
+      const toDelete = shapes.filter(s => s.groupId !== undefined && !validGroupIds.has(s.groupId));
       toDelete.forEach(s => {
         api.drawings.delete(s.id).catch(err => console.error('Failed to delete drawing with invalid group:', err));
       });
