@@ -744,6 +744,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       if (!containerRef.current?.contains(e.target as Node) || !graphRef.current) return;
+      if ((e.target as HTMLElement).closest('.graph-ui-hide') || (e.target as HTMLElement).closest('button')) return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -2266,7 +2267,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
-        {showSelectionPane ? 'Hide List' : 'Show List'}
+        Selection Pane
       </button>
 
       {/* Selection Pane */}
