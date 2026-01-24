@@ -1020,6 +1020,12 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
 
   const handleContainerMouseDownCapture = useCallback((e: React.MouseEvent) => {
+    // Ignore clicks on UI elements
+    const target = e.target as HTMLElement;
+    if (target.closest('.graph-ui-hide') || target.closest('button') || target.closest('nav') || target.closest('header')) {
+      return;
+    }
+
     dragStartPosRef.current = { x: e.clientX, y: e.clientY };
     const selectedNodeIds = selectedNodeIdsRef.current;
 
@@ -2105,7 +2111,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               />
             </div>
           )}
-          <div className="graph-ui-hide">
+          <div className="graph-ui-hide" onMouseDown={(e) => e.stopPropagation()}>
             <DrawingProperties
               activeTool={graphSettings.activeTool}
               strokeWidth={graphSettings.strokeWidth}
@@ -2131,7 +2137,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       )}
 
 
-      <div className="graph-ui-hide">
+      <div className="graph-ui-hide" onMouseDown={(e) => e.stopPropagation()}>
         <GroupsTabs
           groups={groups}
           activeGroupId={activeGroupId}
@@ -2239,6 +2245,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             graphRef.current.centerAt(centerX, centerY, 500);
             graphRef.current.zoom(1, 500);
           }}
+          onMouseDown={(e) => e.stopPropagation()}
           className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-full bg-zinc-800/90 px-4 py-2 text-sm text-white shadow-lg backdrop-blur-sm border border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600 transition-all graph-ui-hide"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2250,6 +2257,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
       <button
         onClick={() => setShowSelectionPane(!showSelectionPane)}
+        onMouseDown={(e) => e.stopPropagation()}
         className={`absolute bottom-4 right-4 z-30 flex items-center gap-2 rounded-lg px-3 py-2 text-sm shadow-lg backdrop-blur-sm border transition-all graph-ui-hide ${showSelectionPane
           ? 'bg-zinc-700 text-white border-zinc-600'
           : 'bg-zinc-800/90 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-white hover:border-zinc-600'
@@ -2263,7 +2271,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
       {/* Selection Pane */}
       {showSelectionPane && (
-        <div className="graph-ui-hide">
+        <div className="graph-ui-hide" onMouseDown={(e) => e.stopPropagation()}>
           <SelectionPane
             isPreviewMode={graphSettings.isPreviewMode}
             nodes={nodes}
@@ -2316,7 +2324,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       )}
 
       {selectedLink && (
-        <div className="graph-ui-hide">
+        <div className="graph-ui-hide" onMouseDown={(e) => e.stopPropagation()}>
           <ConnectionProperties
             link={selectedLink}
             onClose={() => setSelectedLink(null)}
