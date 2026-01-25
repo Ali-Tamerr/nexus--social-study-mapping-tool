@@ -76,7 +76,7 @@ export function ShareModal({ isOpen, onClose, shareUrl }: ShareModalProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      // console.error('Failed to copy:', err);
     }
   };
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { X, Save, Trash2, Plus, Image, Video, Link2, FileText, ExternalLink, Tag, Loader2, ArrowRight, Pencil } from 'lucide-react';
 import { useGraphStore } from '@/store/useGraphStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useToast } from '@/context/ToastContext';
 import { Attachment, Tag as TagType, Link as LinkType, GROUP_COLORS } from '@/types/knowledge';
 import { api } from '@/lib/api';
 import { ColorPicker } from '@/components/ui/ColorPicker';
@@ -128,7 +129,7 @@ export function NodeEditor() {
       // Update original color so close doesn't revert the saved color
       originalColorRef.current = customColor;
     } catch (err) {
-      console.error('Failed to save node:', err);
+      // console.error('Failed to save node:', err);
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setIsSaving(false);
@@ -137,16 +138,20 @@ export function NodeEditor() {
 
   const handleDelete = async () => {
     if (!activeNode) return;
-    if (!confirm('Are you sure you want to delete this node?')) return;
+    const { showConfirmation, showToast } = useToast();
+    
+    if (!await showConfirmation('Are you sure you want to delete this node?')) return;
 
     setIsDeleting(true);
     try {
       await api.nodes.delete(activeNode.id);
       deleteNode(activeNode.id);
       toggleEditor(false);
+      showToast('Node deleted successfully', 'success');
     } catch (err) {
-      console.error('Failed to delete node:', err);
+      // console.error('Failed to delete node:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete');
+      showToast('Failed to delete node', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -200,7 +205,7 @@ export function NodeEditor() {
       setNewAttachmentName('');
       setShowAttachmentMenu(false);
     } catch (err) {
-      console.error('Failed to add attachment:', err);
+      // console.error('Failed to add attachment:', err);
       setError(err instanceof Error ? err.message : 'Failed to add attachment');
     }
   };
@@ -211,7 +216,7 @@ export function NodeEditor() {
       await api.attachments.delete(attachmentId);
       removeAttachmentFromNode(activeNode.id, attachmentId);
     } catch (err) {
-      console.error('Failed to remove attachment:', err);
+      // console.error('Failed to remove attachment:', err);
     }
   };
 
@@ -235,7 +240,7 @@ export function NodeEditor() {
       setNewTagName('');
       setShowTagMenu(false);
     } catch (err) {
-      console.error('Failed to add tag:', err);
+      // console.error('Failed to add tag:', err);
       setError(err instanceof Error ? err.message : 'Failed to add tag');
     }
   };
@@ -246,7 +251,7 @@ export function NodeEditor() {
       await api.nodes.removeTag(activeNode.id, tagId);
       removeTagFromNode(activeNode.id, tagId);
     } catch (err) {
-      console.error('Failed to remove tag:', err);
+      // console.error('Failed to remove tag:', err);
     }
   };
 
@@ -294,7 +299,7 @@ export function NodeEditor() {
       setShowConnectionMenu(false);
       setError(null);
     } catch (err) {
-      console.error('Failed to add connection:', err);
+      // console.error('Failed to add connection:', err);
       setError(err instanceof Error ? err.message : 'Failed to add connection');
     }
   };
@@ -304,7 +309,7 @@ export function NodeEditor() {
       await api.links.delete(linkId);
       deleteLink(linkId);
     } catch (err) {
-      console.error('Failed to remove connection:', err);
+      // console.error('Failed to remove connection:', err);
     }
   };
 
@@ -368,7 +373,7 @@ export function NodeEditor() {
       setShowConnectionMenu(false);
       setError(null);
     } catch (err) {
-      console.error('Failed to update connection:', err);
+      // console.error('Failed to update connection:', err);
       setError(err instanceof Error ? err.message : 'Failed to update connection');
     }
   };
@@ -397,7 +402,7 @@ export function NodeEditor() {
 
       if (ext && mimeTypes[ext]) return mimeTypes[ext];
     } catch (e) {
-      console.warn('Invalid URL for content type detection:', e);
+      // console.warn('Invalid URL for content type detection:', e);
     }
     return 'text/html';
   };
@@ -864,7 +869,7 @@ export function NodeEditor() {
 
       {isDirty && !showUnsavedPopup && (
         <div
-          className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[1px] cursor-pointer"
+          className="fixed inset-0 z-40 cursor-pointer"
           onClick={() => setShowUnsavedPopup(true)}
           title="You have unsaved changes"
         />

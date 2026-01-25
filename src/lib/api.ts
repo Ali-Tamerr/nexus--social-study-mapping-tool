@@ -66,8 +66,8 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit & { suppressL
       }
       
       if (!suppressLog) {
-        console.error(`[API] Error ${response.status}:`, error);
-        console.error(`[API] Raw Output:`, text);
+        // console.error(`[API] Error ${response.status}:`, error);
+        // console.error(`[API] Raw Output:`, text);
       }
       throw new Error(error.title || error.message || `API Error: ${response.status}`);
     }
@@ -80,7 +80,7 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit & { suppressL
     return toFrontend<T>(data);
   } catch (err) {
     if (!suppressLog) {
-      console.error(`[API] Request failed:`, err);
+      // console.error(`[API] Request failed:`, err);
     }
     throw err;
   }
@@ -89,7 +89,7 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit & { suppressL
 async function fetchApiWithBody<T>(endpoint: string, method: string, body: unknown, suppressLog?: boolean): Promise<T> {
   const convertedBody = toApi(body);
   if (!suppressLog) {
-     console.log(`[API] ${method} ${endpoint} Payload:`, JSON.stringify(convertedBody, null, 2));
+    //  console.log(`[API] ${method} ${endpoint} Payload:`, JSON.stringify(convertedBody, null, 2));
   }
   
   return fetchApi<T>(endpoint, {

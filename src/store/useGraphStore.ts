@@ -173,7 +173,7 @@ export const useGraphStore = create<AppState>()(
           currentProject: s.currentProject?.id === id ? prev : s.currentProject
         }));
       }
-      console.error('Failed to update project:', err);
+      // console.error('Failed to update project:', err);
     }
   },
   

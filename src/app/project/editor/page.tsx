@@ -138,7 +138,7 @@ export default function EditorPage() {
 
     const handleCreateNode = async () => {
         if (!currentProject || !projectId || !user?.id) {
-            console.log('Add node aborted: missing currentProject, projectId, or user.id', { currentProject, projectId, user });
+            // console.log('Add node aborted: missing currentProject, projectId, or user.id', { currentProject, projectId, user });
             return;
         }
 
@@ -182,9 +182,9 @@ export default function EditorPage() {
                 y: randomY,
                 userId: user.id,
             };
-            console.log('Creating node with payload:', payload);
+            // console.log('Creating node with payload:', payload);
             let newNode = await api.nodes.create(payload);
-            console.log('Node created from API:', newNode);
+            // console.log('Node created from API:', newNode);
 
             // If backend didn't return position/color, force update with full node object
             if (newNode.x === null || newNode.x === undefined || newNode.customColor !== randomColor) {
@@ -200,12 +200,14 @@ export default function EditorPage() {
                     customColor: randomColor,
                     x: randomX,
                     y: randomY,
-                }).catch(err => console.error('Failed to persist initial node properties:', err));
+                }).catch(
+                    // err => console.error('Failed to persist initial node properties:', err)
+                );
             }
 
             addNode(newNode);
         } catch (err) {
-            console.error('Error creating node:', err);
+            // console.error('Error creating node:', err);
             addNode(demoNode);
         } finally {
             setLoading(false);

@@ -13,8 +13,11 @@ interface ProfileModalProps {
     initialMode?: ModalMode;
 }
 
+import { useToast } from '@/context/ToastContext';
+
 export function ProfileModal({ isOpen, onClose, initialMode = 'edit_profile' }: ProfileModalProps) {
     const { user, login } = useAuthStore();
+    const { showToast } = useToast();
     const [mode, setMode] = useState<ModalMode>(initialMode);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -46,7 +49,7 @@ export function ProfileModal({ isOpen, onClose, initialMode = 'edit_profile' }: 
         const file = e.target.files?.[0];
         if (file) {
             if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                alert('File size too large (max 5MB)');
+                showToast('File size too large (max 5MB)', 'error');
                 return;
             }
             const reader = new FileReader();
@@ -78,8 +81,8 @@ export function ProfileModal({ isOpen, onClose, initialMode = 'edit_profile' }: 
             login(mergedUser);
             onClose();
         } catch (error) {
-            console.error('Failed to update profile:', error);
-            alert('Failed to update profile');
+            // console.error('Failed to update profile:', error);
+            showToast('Failed to update profile', 'error');
         } finally {
             setIsLoading(false);
         }
@@ -87,11 +90,11 @@ export function ProfileModal({ isOpen, onClose, initialMode = 'edit_profile' }: 
 
     const handleChangePassword = async () => {
         if (newPassword !== confirmPassword) {
-            alert('Passwords do not match');
+            showToast('Passwords do not match', 'error');
             return;
         }
         if (newPassword.length < 6) {
-            alert('Password must be at least 6 characters');
+            showToast('Password must be at least 6 characters', 'error');
             return;
         }
 
@@ -118,11 +121,11 @@ export function ProfileModal({ isOpen, onClose, initialMode = 'edit_profile' }: 
             if ('password' in mergedUser) delete (mergedUser as any).password;
 
             login(mergedUser);
-            alert('Password updated successfully');
+            showToast('Password updated successfully', 'success');
             onClose();
         } catch (error) {
-            console.error('Failed to update password:', error);
-            alert('Failed to update password');
+            // console.error('Failed to update password:', error);
+            showToast('Failed to update password', 'error');
         } finally {
             setIsLoading(false);
         }

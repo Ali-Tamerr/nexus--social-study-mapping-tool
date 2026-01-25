@@ -115,7 +115,9 @@ export function CommandPalette() {
           customColor: randomColor,
           x: newNode.x,
           y: newNode.y,
-        }).catch(err => console.error('Failed to persist initial random color:', err));
+        }).catch(
+          // err => console.error('Failed to persist initial random color:', err)
+        );
       }
 
       addNode(newNode);
@@ -124,7 +126,7 @@ export function CommandPalette() {
       setQuery('');
       setSelectedIndex(0);
     } catch (err) {
-      console.error('Failed to create node:', err);
+      // console.error('Failed to create node:', err);
     } finally {
       setIsCreating(false);
     }

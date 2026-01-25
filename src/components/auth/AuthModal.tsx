@@ -65,7 +65,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
         resetForm();
       }
     } catch (err) {
-      console.error('Auth error:', err);
+      // console.error('Auth error:', err);
 
       if (err instanceof Error) {
         if (err.message.includes('404') || err.message.includes('Not Found')) {

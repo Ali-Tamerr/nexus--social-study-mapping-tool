@@ -6,6 +6,7 @@ import { Link } from '@/types/knowledge';
 import { useGraphStore } from '@/store/useGraphStore';
 import { api } from '@/lib/api';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { useToast } from '@/context/ToastContext';
 
 interface ConnectionPropertiesProps {
     link: Link | null;
@@ -16,6 +17,7 @@ export function ConnectionProperties({ link, onClose }: ConnectionPropertiesProp
     const nodes = useGraphStore((s) => s.nodes);
     const deleteLink = useGraphStore((s) => s.deleteLink);
     const addLink = useGraphStore((s) => s.addLink);
+    const { showConfirmation } = useToast();
 
     const [isEditing, setIsEditing] = useState(false);
     const [description, setDescription] = useState(link?.description || '');
@@ -27,13 +29,13 @@ export function ConnectionProperties({ link, onClose }: ConnectionPropertiesProp
     const targetNode = nodes.find(n => n.id === link.targetId);
 
     const handleDelete = async () => {
-        if (!confirm('Delete this connection?')) return;
+        if (!await showConfirmation('Delete this connection?')) return;
         try {
             await api.links.delete(link.id);
             deleteLink(link.id);
             onClose();
         } catch (err) {
-            console.error('Failed to delete connection:', err);
+            // console.error('Failed to delete connection:', err);
         }
     };
 
@@ -52,7 +54,7 @@ export function ConnectionProperties({ link, onClose }: ConnectionPropertiesProp
             addLink(updatedLink);
             setIsEditing(false);
         } catch (err) {
-            console.error('Failed to update connection:', err);
+            // console.error('Failed to update connection:', err);
         }
     };
 

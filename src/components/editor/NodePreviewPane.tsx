@@ -12,7 +12,7 @@ interface NodePreviewPaneContentProps {
 }
 
 export function NodePreviewPaneContent({ activeNode, nodes, links, onClose }: NodePreviewPaneContentProps) {
-    console.log('[NodeEditPanelDebug]', { nodeId: activeNode.id, title: activeNode.title, customColor: activeNode.customColor });
+    // console.log('[NodeEditPanelDebug]', { nodeId: activeNode.id, title: activeNode.title, customColor: activeNode.customColor });
     const attachments = activeNode.attachments || [];
     const nodeConnections = links.filter(l => l.sourceId === activeNode.id || l.targetId === activeNode.id);
 
@@ -21,7 +21,8 @@ export function NodePreviewPaneContent({ activeNode, nodes, links, onClose }: No
         return nodes.find(n => n.id === connectedId);
     };
 
-    const getAttachmentIcon = (contentType: string) => {
+    const getAttachmentIcon = (contentType?: string) => {
+        if (!contentType) return <FileText className="h-4 w-4" />;
         if (contentType.startsWith('image/')) return <Image className="h-4 w-4" />;
         if (contentType.startsWith('video/')) return <Video className="h-4 w-4" />;
         if (contentType === 'text/html') return <Link2 className="h-4 w-4" />;
@@ -29,7 +30,7 @@ export function NodePreviewPaneContent({ activeNode, nodes, links, onClose }: No
     };
 
     return (
-        <div className="fixed right-0 top-0 z-30 flex h-full w-96 flex-col border-l border-zinc-800 bg-zinc-900/95 backdrop-blur-sm">
+        <div className="fixed right-0 top-0 z-30 flex h-full w-96 flex-col border-l border-zinc-800 bg-zinc-900/95 ">
             <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
                 <h2 className="text-sm font-semibold text-white">Node Details</h2>
                 <button

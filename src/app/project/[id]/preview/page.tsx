@@ -131,7 +131,7 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
                 }));
                 setShapes(loadedShapes);
             } catch (err) {
-                console.error('Failed to load project:', err);
+                // console.error('Failed to load project:', err);
                 setError('Failed to load project. It may not exist or you may not have access.');
             } finally {
                 setIsLoading(false);

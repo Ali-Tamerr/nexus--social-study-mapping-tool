@@ -159,7 +159,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           customColor: randomColor,
           x: randomX,
           y: randomY,
-        }).catch(err => console.error('Failed to persist initial node properties:', err));
+        }).catch(
+          // err => console.error('Failed to persist initial node properties:', err)
+        );
       }
 
       addNode(newNode);
@@ -187,7 +189,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     try {
       await exportProjectAsNxus(currentProject, nodes, links, shapes, groups);
     } catch (err) {
-      console.error('Failed to export project:', err);
+      // console.error('Failed to export project:', err);
     }
   };
 

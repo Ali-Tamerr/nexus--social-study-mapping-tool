@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useRef, useCallback, useMemo, useEffect, useState } from 'react';
 import { useGraphStore, filterNodes } from '@/store/useGraphStore';
+import { useToast } from '@/context/ToastContext';
 import { DrawingProperties } from './DrawingProperties';
 import { ConnectionProperties } from './ConnectionProperties';
 import { drawShapeOnContext, isPointNearShape, drawSelectionBox, isShapeInMarquee, drawMarquee } from './drawingUtils';
@@ -197,6 +198,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const setHoveredNode = useGraphStore((s) => s.setHoveredNode);
   const searchQuery = useGraphStore((s) => s.searchQuery);
   const graphSettings = useGraphStore((s) => s.graphSettings);
+  const { showToast, showConfirmation } = useToast();
   const setGraphSettings = useGraphStore((s) => s.setGraphSettings);
 
   const groups = useGraphStore(state => state.groups);
@@ -525,7 +527,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         const loadedShapes = drawings.map(apiDrawingToShape);
         setShapes(loadedShapes);
       })
-      .catch(err => console.error('Failed to load drawings:', err));
+      .catch(
+      // err => console.error('Failed to load drawings:', err)
+    );
   }, [currentProject?.id, apiDrawingToShape, setShapes]);
 
   const groupsLoadedRef = useRef(false);
@@ -550,7 +554,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           // If renaming, also update backend
           if (isColorName && g.name !== newName) {
             api.groups.update(g.id, { name: newName })
-              .catch(err => console.warn('Failed to rename group:', err));
+              .catch(
+              // err => console.warn('Failed to rename group:', err)
+            );
           }
 
           return { ...g, name: newName, order: i };
@@ -561,7 +567,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           setActiveGroupId(groupsWithOrder[0].id);
         }
       })
-      .catch(err => console.error('Failed to load groups:', err));
+      .catch(
+      // err => console.error('Failed to load groups:', err)
+    );
   }, [setGroups, setActiveGroupId]);
 
   // Update selected shapes when settings change
@@ -837,7 +845,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     if (validNodes.length !== nodes.length) {
       const toDelete = nodes.filter(n => n.groupId !== undefined && !validGroupIds.has(n.groupId));
       toDelete.forEach(n => {
-        api.nodes.delete(n.id).catch(err => console.error('Failed to delete node with invalid group:', err));
+        api.nodes.delete(n.id).catch(
+          // err => console.error('Failed to delete node with invalid group:', err)
+        );
       });
       useGraphStore.getState().setNodes(validNodes);
     }
@@ -846,7 +856,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     if (validShapes.length !== shapes.length) {
       const toDelete = shapes.filter(s => s.groupId !== undefined && !validGroupIds.has(s.groupId));
       toDelete.forEach(s => {
-        api.drawings.delete(s.id).catch(err => console.error('Failed to delete drawing with invalid group:', err));
+        api.drawings.delete(s.id).catch(
+          // err => console.error('Failed to delete drawing with invalid group:', err)
+        );
       });
       useGraphStore.getState().setShapes(validShapes);
     }
@@ -905,7 +917,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             const remaining = shapesRef.current.filter(s => !selectedShapeIdsRef.current.has(s.id));
             setShapes(remaining);
             toDelete.forEach(s => {
-              api.drawings.delete(s.id).catch(err => console.error('Failed to delete drawing:', err));
+              api.drawings.delete(s.id).catch(
+                // err => console.error('Failed to delete drawing:', err)
+              );
             });
             setSelectedShapeIds(new Set());
           }
@@ -915,7 +929,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             const deleteNode = useGraphStore.getState().deleteNode;
             selectedNodeIdsRefForDelete.current.forEach(nodeId => {
               deleteNode(nodeId);
-              api.nodes.delete(nodeId).catch(err => console.error('Failed to delete node:', err));
+              api.nodes.delete(nodeId).catch(
+                // err => console.error('Failed to delete node:', err)
+              );
             });
             setSelectedNodeIds(new Set());
             setActiveNode(null);
@@ -1267,7 +1283,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       const resizedShape = finalShapes.find(s => s.id === resizingShapeIdRef.current);
       if (resizedShape && resizedShape.synced !== false) {
         api.drawings.update(resizedShape.id, { points: JSON.stringify(resizedShape.points) })
-          .catch(err => console.error('Failed to update drawing:', err));
+          .catch(
+          // err => console.error('Failed to update drawing:', err)
+        );
       }
       setIsResizing(false);
       activeResizeHandleRef.current = null;
@@ -1281,7 +1299,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       filteredShapes.filter(s => selectedShapeIds.has(s.id)).forEach(s => {
         if (s.synced !== false) {
           api.drawings.update(s.id, { points: JSON.stringify(s.points) })
-            .catch(err => console.error('Failed to update drawing:', err));
+            .catch(
+            // err => console.error('Failed to update drawing:', err)
+          );
         }
       });
       setIsDraggingSelection(false);
@@ -1309,7 +1329,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         finalShapes.forEach(s => {
           if (selectedShapeIds.has(s.id) && s.synced !== false) {
             api.drawings.update(s.id, { points: JSON.stringify(s.points) })
-              .catch(err => console.error('Failed to update drawing:', err));
+              .catch(
+              // err => console.error('Failed to update drawing:', err)
+            );
           }
         });
       }
@@ -1433,7 +1455,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               group: fullNode.group ? { id: fullNode.group.id, name: fullNode.group.name, color: fullNode.group.color, order: fullNode.group.order } : { id: fullNode.groupId ?? 0, name: 'Default', color: '#808080', order: 0 },
               x: n.x,
               y: n.y
-            }).catch(err => console.error('Failed to update node position:', err));
+            }).catch(
+              // err => console.error('Failed to update node position:', err)
+            );
           }
         }
       });
@@ -1446,7 +1470,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         finalShapes.forEach(s => {
           if (selectedShapeIds.has(s.id)) {
             api.drawings.update(s.id, { points: JSON.stringify(s.points) })
-              .catch(err => console.error('Failed to update drawing:', err));
+              .catch(
+              // err => console.error('Failed to update drawing:', err)
+            );
           }
         });
       }
@@ -1471,7 +1497,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           group: fullNode.group ? { id: fullNode.group.id, name: fullNode.group.name, color: fullNode.group.color, order: fullNode.group.order } : { id: fullNode.groupId ?? 0, name: 'Default', color: '#808080', order: 0 },
           x: node.x,
           y: node.y
-        }).catch(err => console.error('Failed to update node position:', err));
+        }).catch(
+          // err => console.error('Failed to update node position:', err)
+        );
       }
     }
   }, [setShapes]);
@@ -1599,7 +1627,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       if (remaining.length !== shapes.length) {
         setShapes(remaining);
         erasedShapes.forEach(s => {
-          api.drawings.delete(s.id).catch(err => console.error('Failed to delete drawing:', err));
+          api.drawings.delete(s.id).catch(
+            // err => console.error('Failed to delete drawing:', err)
+          );
         });
       }
       return;
@@ -1662,7 +1692,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             return next;
           });
         })
-        .catch(err => console.error('Failed to save drawing:', err));
+        .catch(
+        // err => console.error('Failed to save drawing:', err)
+      );
     }
 
     setIsDrawing(false);
@@ -1987,7 +2019,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     if (editingShapeId) {
                       updateShape(editingShapeId, { text: textInputValue.trim() });
                       api.drawings.update(editingShapeId, { text: textInputValue.trim() })
-                        .catch(err => console.error('Failed to update drawing:', err));
+                        .catch(
+                        // err => console.error('Failed to update drawing:', err)
+                      );
                     } else {
                       const newShape: DrawnShape = {
                         id: crypto.randomUUID(),
@@ -2007,7 +2041,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                           .then(createdDrawing => {
                             updateShape(newShape.id, { id: createdDrawing.id });
                           })
-                          .catch(err => console.error('Failed to create drawing:', err));
+                          .catch(
+                          // err => console.error('Failed to create drawing:', err)
+                        );
                       }
                     }
 
@@ -2032,7 +2068,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     if (editingShapeId) {
                       updateShape(editingShapeId, { text: textInputValue.trim() });
                       api.drawings.update(editingShapeId, { text: textInputValue.trim() })
-                        .catch(err => console.error('Failed to update drawing:', err));
+                        .catch(
+                        // err => console.error('Failed to update drawing:', err)
+                      );
                     } else {
                       const newShape: DrawnShape = {
                         id: crypto.randomUUID(),
@@ -2052,7 +2090,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                           .then(createdDrawing => {
                             updateShape(newShape.id, { id: createdDrawing.id });
                           })
-                          .catch(err => console.error('Failed to create drawing:', err));
+                          .catch(
+                          // err => console.error('Failed to create drawing:', err)
+                        );
                       }
                     }
                   }
@@ -2119,14 +2159,16 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               addGroup(groupWithOrder);
               setActiveGroupId(newGroup.id);
             } catch (err: any) {
-              console.error("Failed to create group:", err.message);
-              alert("Failed to create group. Please try again.");
+              // console.error("Failed to create group:", err.message);
+              showToast("Failed to create group. Please try again.", "error");
             }
           }}
           onRenameGroup={(id, newName) => {
             updateGroup(id, { name: newName });
             api.groups.update(id, { name: newName })
-              .catch(err => console.warn("Backend sync failed (Rename Group):", err.message));
+              .catch(
+              // rr => console.warn("Backend sync failed (Rename Group):", err.message)
+            );
           }}
           onDeleteGroup={async (id) => {
             const groupToDelete = groups.find(g => g.id === id);
@@ -2144,7 +2186,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               if (shapeCount > 0) message += `\n• ${shapeCount} drawing${shapeCount > 1 ? 's' : ''}`;
             }
 
-            if (!window.confirm(message)) {
+            if (!await showConfirmation(message)) {
               return;
             }
 
@@ -2177,7 +2219,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           onReorderGroups={(newGroups) => {
             setGroups(newGroups);
             api.groups.reorder(newGroups.map(g => g.id))
-              .catch(err => console.warn("Backend sync failed (Reorder Groups):", err.message));
+              .catch(
+              // err => console.warn("Backend sync failed (Reorder Groups):", err.message)
+            );
           }}
         />
       </div>
