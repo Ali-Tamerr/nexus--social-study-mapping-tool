@@ -1,46 +1,249 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, User, Lock, Camera, Loader2, Mail } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { X, User, Camera, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
+
+export type ModalMode = 'edit_profile' | 'change_password';
 
 interface ProfileModalProps {
     isOpen: boolean;
     onClose: () => void;
+    initialMode?: ModalMode;
 }
 
-export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
+export function ProfileModal({ isOpen, onClose, initialMode = 'edit_profile' }: ProfileModalProps) {
     const { user, login } = useAuthStore();
-    const [isEditing, setIsEditing] = useState(false);
+    const [mode, setMode] = useState<ModalMode>(initialMode);
     const [isLoading, setIsLoading] = useState(false);
+
+    // Edit Profile State
     const [displayName, setDisplayName] = useState('');
+    const [email, setEmail] = useState('');
     const [avatarUrl, setAvatarUrl] = useState('');
+
+    // Change Password State
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (isOpen && user) {
             setDisplayName(user.displayName || '');
+            setEmail(user.email || '');
             setAvatarUrl(user.avatarUrl || '');
-            setIsEditing(false);
+            if (initialMode) setMode(initialMode);
+            setNewPassword('');
+            setConfirmPassword('');
         }
-    }, [isOpen, user]);
+    }, [isOpen, user, initialMode]);
 
     if (!isOpen || !user) return null;
 
-    const handleUpdate = async () => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                alert('File size too large (max 5MB)');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setAvatarUrl(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleUpdateProfile = async () => {
         setIsLoading(true);
         try {
-            const updatedUser = await api.profiles.update(user.id, {
+            const payload = {
+                id: user.id,
+                email: email || user.email || '',
                 displayName,
                 avatarUrl,
-            });
-            login(updatedUser);
-            setIsEditing(false);
+            };
+            const response = await api.profiles.update(user.id, payload);
+
+            // Safe merge in case API returns empty (204) or partial
+            const mergedUser = {
+                ...user,
+                ...payload,
+                ...(response || {})
+            };
+
+            login(mergedUser);
+            onClose();
         } catch (error) {
             console.error('Failed to update profile:', error);
-            // In a real app we'd show a toast error here
+            alert('Failed to update profile');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleChangePassword = async () => {
+        if (newPassword !== confirmPassword) {
+            alert('Passwords do not match');
+            return;
+        }
+        if (newPassword.length < 6) {
+            alert('Password must be at least 6 characters');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const payload = {
+                id: user.id,
+                email: user.email || '',
+                displayName: user.displayName,
+                avatarUrl: user.avatarUrl,
+                password: newPassword
+            };
+
+            const response = await api.profiles.update(user.id, payload as any);
+
+            // Safe merge
+            const mergedUser = {
+                ...user,
+                ...payload,
+                ...(response || {})
+            };
+            // Don't store password in local user object usually, but spread might include it. 
+            // It's harmless in memory usually, but cleaner to remove it.
+            if ('password' in mergedUser) delete (mergedUser as any).password;
+
+            login(mergedUser);
+            alert('Password updated successfully');
+            onClose();
+        } catch (error) {
+            console.error('Failed to update password:', error);
+            alert('Failed to update password');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const renderContent = () => {
+        switch (mode) {
+            case 'change_password':
+                return (
+                    <div className="flex flex-col gap-5">
+                        <h3 className="text-lg font-semibold text-white px-1">Change Password</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <p className="text-xs font-medium text-zinc-500 mb-1.5 ml-1">New Password</p>
+                                <input
+                                    type="password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    className="w-full rounded-lg bg-zinc-800 px-4 py-3 text-sm text-white outline-none ring-1 ring-zinc-700 focus:ring-blue-500 transition-all placeholder:text-zinc-600"
+                                />
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium text-zinc-500 mb-1.5 ml-1">Confirm Password</p>
+                                <input
+                                    type="password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className="w-full rounded-lg bg-zinc-800 px-4 py-3 text-sm text-white outline-none ring-1 ring-zinc-700 focus:ring-blue-500 transition-all placeholder:text-zinc-600"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 mt-2">
+                            <button
+                                onClick={onClose}
+                                className="flex-1 rounded-lg border border-zinc-700 bg-transparent px-4 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-800 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleChangePassword}
+                                disabled={isLoading}
+                                className="flex-1 rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-zinc-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                );
+
+            case 'edit_profile':
+            default:
+                return (
+                    <div className="flex flex-col gap-6">
+                        {/* Avatar Centered */}
+                        <div className="flex justify-center py-2">
+                            <div
+                                className="relative h-24 w-24 cursor-pointer group"
+                                onClick={() => fileInputRef.current?.click()}
+                                title="Click to change photo"
+                            >
+                                {avatarUrl ? (
+                                    <img src={avatarUrl} alt="Profile" className="h-full w-full rounded-full object-cover ring-4 ring-zinc-800" />
+                                ) : (
+                                    <div className="flex h-full w-full items-center justify-center rounded-full bg-zinc-800 text-3xl font-bold text-zinc-400">
+                                        {displayName ? displayName.charAt(0).toUpperCase() : <User className="h-10 w-10" />}
+                                    </div>
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[2px]">
+                                    <Camera className="h-8 w-8 text-white drop-shadow-md" />
+                                </div>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleFileChange}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <p className="text-xs font-medium text-zinc-500 mb-1.5 ml-1">Display Name</p>
+                                <input
+                                    value={displayName}
+                                    onChange={(e) => setDisplayName(e.target.value)}
+                                    className="w-full rounded-lg bg-zinc-800 px-4 py-3 text-sm text-white outline-none ring-1 ring-zinc-700 focus:ring-blue-500 transition-all placeholder:text-zinc-600"
+                                    placeholder="Your Name"
+                                />
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium text-zinc-500 mb-1.5 ml-1">Email</p>
+                                <input
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full rounded-lg bg-zinc-800 px-4 py-3 text-sm text-white outline-none ring-1 ring-zinc-700 focus:ring-blue-500 transition-all placeholder:text-zinc-600"
+                                    placeholder="you@example.com"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 mt-2">
+                            <button
+                                onClick={onClose}
+                                className="flex-1 rounded-lg border border-zinc-700 bg-transparent px-4 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-800 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleUpdateProfile}
+                                disabled={isLoading}
+                                className="flex-1 rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-zinc-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                );
         }
     };
 
@@ -51,111 +254,15 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 onClick={onClose}
             />
 
-            <div className="relative w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="relative w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900 p-8 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
                 <button
                     onClick={onClose}
-                    className="absolute right-4 top-4 rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+                    className="absolute right-4 top-4 rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white z-10"
                 >
                     <X className="h-5 w-5" />
                 </button>
 
-                <div className="mb-6 text-center">
-                    <div className="relative mx-auto mb-4 h-24 w-24 group">
-                        {avatarUrl ? (
-                            <img
-                                src={avatarUrl}
-                                alt="Profile"
-                                className="h-full w-full rounded-full object-cover ring-4 ring-zinc-800"
-                            />
-                        ) : (
-                            <div className="flex h-full w-full items-center justify-center rounded-full bg-zinc-800 text-3xl font-bold text-zinc-400">
-                                {displayName ? displayName.charAt(0).toUpperCase() : <User className="h-10 w-10" />}
-                            </div>
-                        )}
-                        {isEditing && (
-                            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                <Camera className="h-6 w-6 text-white" />
-                            </div>
-                        )}
-                    </div>
-
-                    {!isEditing && (
-                        <>
-                            <h2 className="text-2xl font-bold text-white">{user.displayName || 'User'}</h2>
-                            <div className="mt-1 flex items-center justify-center gap-2 text-sm text-zinc-400">
-                                <Mail className="h-3.5 w-3.5" />
-                                <span>{user.email}</span>
-                            </div>
-                        </>
-                    )}
-                </div>
-
-                <div className="space-y-4">
-                    {isEditing ? (
-                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                            <div>
-                                <label className="block text-xs font-medium text-zinc-500 mb-1.5">Display Name</label>
-                                <input
-                                    value={displayName}
-                                    onChange={(e) => setDisplayName(e.target.value)}
-                                    className="w-full rounded-lg bg-zinc-800 px-3 py-2.5 text-sm text-white placeholder-zinc-500 outline-none ring-1 ring-zinc-700 transition-all focus:ring-blue-500"
-                                    placeholder="Your Name"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-zinc-500 mb-1.5">Avatar URL</label>
-                                <input
-                                    value={avatarUrl}
-                                    onChange={(e) => setAvatarUrl(e.target.value)}
-                                    className="w-full rounded-lg bg-zinc-800 px-3 py-2.5 text-sm text-white placeholder-zinc-500 outline-none ring-1 ring-zinc-700 transition-all focus:ring-blue-500"
-                                    placeholder="https://example.com/photo.jpg"
-                                />
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="rounded-xl border border-zinc-800 bg-zinc-800/30 p-4 flex items-center justify-between group hover:border-zinc-700 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="rounded-full bg-zinc-800 p-2.5 text-zinc-400 group-hover:text-blue-400 transition-colors">
-                                    <Lock className="h-4 w-4" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-white">Password</p>
-                                    <p className="text-xs text-zinc-500">*************</p>
-                                </div>
-                            </div>
-                            <button className="rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700 transition-colors border border-zinc-700">
-                                Change
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                <div className="mt-8 flex justify-end pt-4 border-t border-zinc-800/50">
-                    {isEditing ? (
-                        <div className="flex gap-3 w-full">
-                            <button
-                                onClick={() => setIsEditing(false)}
-                                className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleUpdate}
-                                disabled={isLoading}
-                                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
-                            >
-                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirm'}
-                            </button>
-                        </div>
-                    ) : (
-                        <button
-                            onClick={() => setIsEditing(true)}
-                            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/20"
-                        >
-                            Edit Profile
-                        </button>
-                    )}
-                </div>
+                {renderContent()}
 
             </div>
         </div>

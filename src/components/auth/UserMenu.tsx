@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { LogOut, Settings, User, ChevronDown } from 'lucide-react';
+import { LogOut, Settings, User, ChevronDown, UserPen, Lock } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { ProfileModal } from './ProfileModal';
+import { ProfileModal, ModalMode } from './ProfileModal';
 
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>('edit_profile');
   const menuRef = useRef<HTMLDivElement>(null);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
@@ -66,13 +67,25 @@ export function UserMenu() {
           <div className="py-1">
             <button
               onClick={() => {
+                setModalMode('edit_profile');
                 setShowProfileModal(true);
                 setIsOpen(false);
               }}
               className="flex w-full items-center gap-3 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
             >
-              <User className="h-4 w-4" />
-              Profile
+              <UserPen className="h-4 w-4" />
+              Edit Profile
+            </button>
+            <button
+              onClick={() => {
+                setModalMode('change_password');
+                setShowProfileModal(true);
+                setIsOpen(false);
+              }}
+              className="flex w-full items-center gap-3 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
+            >
+              <Lock className="h-4 w-4" />
+              Change Password
             </button>
             {/* <button className="flex w-full items-center gap-3 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-800">
               <Settings className="h-4 w-4" />
@@ -94,7 +107,7 @@ export function UserMenu() {
           </div>
         </div>
       )}
-      <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
+      <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} initialMode={modalMode} />
     </div>
   );
 }
