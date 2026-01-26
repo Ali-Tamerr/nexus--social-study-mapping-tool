@@ -1,5 +1,5 @@
 export interface Project {
-  id: string;
+  id: number;
   name: string;
   description?: string;
   color?: string;
@@ -11,8 +11,8 @@ export interface Project {
 }
 
 export interface Attachment {
-  id: string;
-  nodeId: string;
+  id: number;
+  nodeId: number;
   fileName: string;
   fileUrl: string;
   contentType?: string;
@@ -22,7 +22,7 @@ export interface Attachment {
 }
 
 export interface Tag {
-  id: string;
+  id: number;
   name: string;
   color?: string;
   userId?: string;
@@ -37,8 +37,8 @@ export interface Group {
 }
 
 export interface Node {
-  id: string;
-  projectId?: string;
+  id: number;
+  projectId?: number;
   title: string;
   content?: string;
   excerpt?: string;
@@ -47,21 +47,21 @@ export interface Node {
   userId?: string;
   createdAt: string;
   updatedAt: string;
-  x?: number;
-  y?: number;
+  x?: number | null;
+  y?: number | null;
   tags?: Tag[];
   attachments?: Attachment[];
   group?: Group;
 }
 
 export interface Link {
-  id: string;
-  sourceId: string;
-  targetId: string;
+  id: number;
+  sourceId: number;
+  targetId: number;
   color: string;
   description?: string;
   userId?: string;
-  createdAt?: string;
+  createdAt: string;
   source?: Node;
   target?: Node;
 }
@@ -86,7 +86,8 @@ export type DrawingTool =
 export type StrokeStyle = 'solid' | 'dashed' | 'dotted';
 
 export interface DrawnShape {
-  id: string;
+  id: number;
+  projectId: number;
   type: DrawingTool;
   points: { x: number; y: number }[];
   color: string;
@@ -112,7 +113,7 @@ export interface GraphSettings {
 
 export interface PresenceState {
   sessionId: string;
-  nodeId: string;
+  nodeId: number;
   userId: string;
   lastSeen: string;
 }

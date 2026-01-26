@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 
 import { useGraphStore, filterNodes } from '@/store/useGraphStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -20,7 +20,8 @@ import { exportProjectAsNxus } from '@/lib/projectExport';
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const graphCanvasRef = useRef<GraphCanvasHandle>(null);
-  const { id } = use(params);
+  const { id: idParam } = use(params);
+  const id = Number(idParam);
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +44,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     setLoading,
     shapes,
     groups,
+    toggleCommandPalette,
   } = useGraphStore();
 
   useEffect(() => {
@@ -118,7 +120,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     const randomY = (Math.random() - 0.5) * 150;
 
     const demoNode = {
-      id: crypto.randomUUID(),
+      id: Date.now() * -1,
       title: 'New Node',
       content: '',
       projectId: id,
@@ -201,7 +203,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         nodeCount={filteredNodes.length}
         onExportPNG={handleExportPNG}
       >
-        <div className="w-64">
+        <div className="hidden lg:block w-64">
           <SearchInput
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -210,12 +212,21 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         </div>
 
         <Button
+          variant="ghost"
+          onClick={() => toggleCommandPalette()}
+          className="lg:hidden px-2"
+          icon={<Search className="h-4 w-4" />}
+        >
+          <span className="sr-only">Search</span>
+        </Button>
+
+        <Button
           variant="brand"
           onClick={handleCreateNode}
           loading={isLoading}
           icon={<Plus className="h-4 w-4" />}
         >
-          Add Node
+          <span className="hidden sm:inline">Add Node</span>
         </Button>
       </ProjectNavbar>
 

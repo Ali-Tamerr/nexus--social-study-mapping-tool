@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
-import { api } from '@/lib/api';
+import { api, ApiDrawing } from '@/lib/api';
 import { NODE_COLORS } from '@/lib/constants';
 import { LoadingScreen } from '@/components/ui';
 import { Node, Link as LinkType, DrawnShape } from '@/types/knowledge';
@@ -14,18 +14,6 @@ import { NodePreviewPaneContent } from '@/components/editor/NodePreviewPane';
 import { drawShapeOnContext } from '@/components/graph/drawingUtils';
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false }) as any;
-
-interface ApiDrawing {
-    id: string;
-    type: string;
-    points: string;
-    color: string;
-    width: number;
-    style: string;
-    text?: string | null;
-    fontSize?: number | null;
-    fontFamily?: string | null;
-}
 
 function adjustBrightness(hex: string, percent: number): string {
     const num = parseInt(hex.replace('#', ''), 16);
@@ -37,7 +25,8 @@ function adjustBrightness(hex: string, percent: number): string {
 }
 
 export default function PreviewPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+    const { id: idParam } = use(params);
+    const id = Number(idParam);
     const [isMounted, setIsMounted] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -79,7 +68,8 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
 
                 let projectNodes = await api.nodes.getByProject(id);
 
-                const hashString = (str: string) => {
+                const hashString = (numId: number) => {
+                    const str = String(numId);
                     let hash = 0;
                     for (let i = 0; i < str.length; i++) {
                         const char = str.charCodeAt(i);
@@ -120,8 +110,9 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
                 const drawings = await api.drawings.getByProject(id);
                 const loadedShapes: DrawnShape[] = drawings.map((d: ApiDrawing) => ({
                     id: d.id,
+                    projectId: d.projectId,
                     type: d.type as DrawnShape['type'],
-                    points: JSON.parse(d.points),
+                    points: d.points,
                     color: d.color,
                     width: d.width,
                     style: d.style as DrawnShape['style'],

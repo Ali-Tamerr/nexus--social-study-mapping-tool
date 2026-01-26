@@ -109,27 +109,27 @@ export const api = {
     getByUser: (userId: string) =>
       fetchApi<Project[]>(`/api/projects?userId=${userId}`),
     
-    getById: (id: string) =>
+    getById: (id: number) =>
       fetchApi<Project>(`/api/projects/${id}`),
     
     create: (data: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) =>
       fetchApiWithBody<Project>('/api/projects', 'POST', data),
     
-    update: (id: string, data: Partial<Project>) =>
+    update: (id: number, data: Partial<Project>) =>
       fetchApiWithBody<Project>(`/api/projects/${id}`, 'PUT', data),
     
-    delete: (id: string) =>
+    delete: (id: number) =>
       fetchApi<void>(`/api/projects/${id}`, { method: 'DELETE' }),
   },
 
   nodes: {
-    getByProject: (projectId: string) =>
+    getByProject: (projectId: number) =>
       fetchApi<Node[]>(`/api/nodes?projectId=${projectId}`),
     
     getByUser: (userId: string) =>
       fetchApi<Node[]>(`/api/nodes/user/${userId}`),
     
-    getById: (id: string) =>
+    getById: (id: number) =>
       fetchApi<Node>(`/api/nodes/${id}`),
     
     search: (query: string) =>
@@ -138,19 +138,19 @@ export const api = {
     create: (data: Omit<Node, 'id' | 'createdAt' | 'updatedAt'>) =>
       fetchApiWithBody<Node>('/api/nodes', 'POST', data),
     
-    update: (id: string, data: Partial<Node>) =>
+    update: (id: number, data: Partial<Node>) =>
       fetchApiWithBody<Node>(`/api/nodes/${id}`, 'PUT', data),
     
-    updatePosition: (id: string, x: number, y: number) =>
+    updatePosition: (id: number, x: number, y: number) =>
       fetchApiWithBody<Node>(`/api/nodes/${id}`, 'PUT', { x, y }),
     
-    delete: (id: string) =>
+    delete: (id: number) =>
       fetchApi<void>(`/api/nodes/${id}`, { method: 'DELETE', suppressLog: true }),
     
-    addTag: (nodeId: string, tagId: string) =>
+    addTag: (nodeId: number, tagId: number) =>
       fetchApi<void>(`/api/nodes/${nodeId}/tags/${tagId}`, { method: 'POST' }),
     
-    removeTag: (nodeId: string, tagId: string) =>
+    removeTag: (nodeId: number, tagId: number) =>
       fetchApi<void>(`/api/nodes/${nodeId}/tags/${tagId}`, { method: 'DELETE' }),
   },
 
@@ -158,22 +158,22 @@ export const api = {
     getAll: () =>
       fetchApi<Link[]>('/api/links'),
     
-    getByNode: (nodeId: string) =>
+    getByNode: (nodeId: number) =>
       fetchApi<Link[]>(`/api/links/node/${nodeId}`),
     
     getByUser: (userId: string) =>
       fetchApi<Link[]>(`/api/links/user/${userId}`),
     
-    getById: (id: string) =>
+    getById: (id: number) =>
       fetchApi<Link>(`/api/links/${id}`),
     
-    create: (data: { sourceId: string; targetId: string; relationshipType?: string; description?: string; userId?: string }) =>
+    create: (data: { sourceId: number; targetId: number; description?: string; userId?: string; color?: string }) =>
       fetchApiWithBody<Link>('/api/links', 'POST', data),
     
-    update: (id: string, data: Partial<Link>) =>
+    update: (id: number, data: Partial<Link>) =>
       fetchApiWithBody<Link>(`/api/links/${id}`, 'PUT', data),
     
-    delete: (id: string) =>
+    delete: (id: number) =>
       fetchApi<void>(`/api/links/${id}`, { method: 'DELETE' }),
   },
 
@@ -184,7 +184,7 @@ export const api = {
     getByUser: (userId: string) =>
       fetchApi<Tag[]>(`/api/tags/user/${userId}`),
     
-    getById: (id: string) =>
+    getById: (id: number) =>
       fetchApi<Tag>(`/api/tags/${id}`),
     
     getByName: (name: string) =>
@@ -193,41 +193,39 @@ export const api = {
     create: (data: { name: string; color?: string; userId?: string }) =>
       fetchApiWithBody<Tag>('/api/tags', 'POST', data),
     
-    update: (id: string, data: Partial<Tag>) =>
+    update: (id: number, data: Partial<Tag>) =>
       fetchApiWithBody<Tag>(`/api/tags/${id}`, 'PUT', data),
     
-    delete: (id: string) =>
+    delete: (id: number) =>
       fetchApi<void>(`/api/tags/${id}`, { method: 'DELETE' }),
   },
 
   attachments: {
-    getByNode: (nodeId: string) =>
+    getByNode: (nodeId: number) =>
       fetchApi<Attachment[]>(`/api/attachments?nodeId=${nodeId}`),
     
-    getById: (id: string) =>
+    getById: (id: number) =>
       fetchApi<Attachment>(`/api/attachments/${id}`),
     
-    // Updated to match recent Docs: nodeId, fileName, fileUrl are required. Others optional? Check latest docs if needed.
-    // Using default toApi (camelToPascal) matches Docs (NodeId, FileName, FileUrl).
-    create: (data: { nodeId: string; fileName: string; fileUrl: string; contentType?: string; fileSize?: number; userId?: string }) =>
+    create: (data: { nodeId: number; fileName: string; fileUrl: string; userId?: string }) =>
       fetchApiWithBody<Attachment>('/api/attachments', 'POST', data),
     
-    delete: (id: string) =>
+    delete: (id: number) =>
       fetchApi<void>(`/api/attachments/${id}`, { method: 'DELETE' }),
   },
 
   groups: {
     getAll: () =>
-      fetchApi<{ id: number; name: string; color: string }[]>('/api/groups'),
+      fetchApi<{ id: number; name: string; color: string; order: number }[]>('/api/groups'),
     
     getById: (id: number) =>
-      fetchApi<{ id: number; name: string; color: string }>(`/api/groups/${id}`),
+      fetchApi<{ id: number; name: string; color: string; order: number }>(`/api/groups/${id}`),
 
-    create: (data: { name: string; color: string }) =>
-      fetchApiWithBody<{ id: number; name: string; color: string }>('/api/groups', 'POST', data),
+    create: (data: { name: string; color: string; order?: number }) =>
+      fetchApiWithBody<{ id: number; name: string; color: string; order: number }>('/api/groups', 'POST', data),
 
-    update: (id: number, data: Partial<{ name: string; color: string }>) =>
-      fetchApiWithBody<{ id: number; name: string; color: string }>(`/api/groups/${id}`, 'PUT', data, true),
+    update: (id: number, data: Partial<{ name: string; color: string; order: number }>) =>
+      fetchApiWithBody<{ id: number; name: string; color: string; order: number }>(`/api/groups/${id}`, 'PUT', data, true),
 
     delete: (id: number) =>
       fetchApi<void>(`/api/groups/${id}`, { method: 'DELETE', suppressLog: true }),
@@ -248,52 +246,56 @@ export const api = {
   },
 
   drawings: {
-    getByProject: (projectId: string) =>
-      fetchApi<ApiDrawing[]>(`/api/drawings?projectId=${projectId}`),
+    getByProject: (projectId: number, groupId?: number) => {
+      let url = `/api/drawings?projectId=${projectId}`;
+      if (groupId !== undefined) url += `&groupId=${groupId}`;
+      return fetchApi<ApiDrawing[]>(url);
+    },
     
-    getById: (id: string) =>
+    getById: (id: number) =>
       fetchApi<ApiDrawing>(`/api/drawings/${id}`),
     
     create: (data: {
-      projectId: string;
+      projectId: number;
       type: string;
-      points: string;
+      points: { x: number; y: number }[];
       color: string;
       width?: number;
       style: string;
       text?: string;
       fontSize?: number;
       fontFamily?: string;
+      groupId?: number;
     }) => {
-      // Use standard conversion (camelToPascal) as per new API consistency
+      // Backend expects Points as array of objects
       return fetchApiWithBody<ApiDrawing>('/api/drawings', 'POST', data);
     },
     
-    update: (id: string, data: Partial<{
+    update: (id: number, data: Partial<{
       type: string;
-      points: string;
+      points: { x: number; y: number }[];
       color: string;
       width: number;
       style: string;
       text: string;
       fontSize: number;
       fontFamily: string;
+      groupId: number;
     }>) => {
-      // Use standard conversion
       return fetchApiWithBody<ApiDrawing>(`/api/drawings/${id}`, 'PUT', data);
     },
     
-    delete: (id: string) =>
+    delete: (id: number) =>
       fetchApi<void>(`/api/drawings/${id}`, { method: 'DELETE' }),
   },
 };
 
 export interface ApiDrawing {
-  id: string;
-  projectId: string;
+  id: number;
+  projectId: number;
   groupId?: number;
   type: string;
-  points: string;
+  points: { x: number; y: number }[];
   color: string;
   width: number;
   style: string;

@@ -3,14 +3,7 @@
 import { useState } from 'react';
 import { ChevronRight, FolderOpen, Loader2, Trash2, Pencil } from 'lucide-react';
 
-interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  color?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { Project } from '@/types/knowledge';
 
 interface ProjectCardProps {
   project: Project;

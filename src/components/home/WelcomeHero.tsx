@@ -20,13 +20,13 @@ export function WelcomeHero({ onSignup, onLogin }: { onSignup: () => void; onLog
       <div className="mt-8 flex gap-4">
         <button
           onClick={onSignup}
-          className="rounded-lg bg-[#355ea1] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#265fbd]"
+          className="rounded-lg bg-[#355ea1] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#265fbd] sm:px-6 sm:py-3"
         >
           Create free account
         </button>
         <button
           onClick={onLogin}
-          className="rounded-lg border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800"
+          className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800 sm:px-6 sm:py-3"
         >
           Sign in
         </button>

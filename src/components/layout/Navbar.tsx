@@ -216,7 +216,7 @@ export function ProjectNavbar({ projectName, projectColor, nodeCount = 0, childr
             />
           )} */}
           <div>
-            <h1 className="text-sm font-semibold text-white">{projectName || 'Project'}</h1>
+            <h1 className="text-sm font-semibold text-white max-w-[120px] sm:max-w-xs truncate" title={projectName || 'Project'}>{projectName || 'Project'}</h1>
             {/* <p className="text-[10px] text-zinc-500">{nodeCount} nodes</p> */}
           </div>
         </div>
@@ -240,13 +240,13 @@ export function AuthNav({ onLogin, onSignup }: AuthNavProps) {
     <div className="flex items-center gap-2">
       <button
         onClick={onLogin}
-        className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
+        className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white sm:px-4 sm:py-2 sm:text-sm"
       >
         Sign in
       </button>
       <button
         onClick={onSignup}
-        className="rounded-lg bg-[#355ea1] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#265fbd]"
+        className="rounded-lg bg-[#355ea1] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#265fbd] sm:px-4 sm:py-2 sm:text-sm"
       >
         Get Started
       </button>

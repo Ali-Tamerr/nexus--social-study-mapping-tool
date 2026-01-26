@@ -44,7 +44,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
   return (
     <>
       {!settings.isPreviewMode && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 rounded-xl bg-zinc-900/90 p-1.5 backdrop-blur-sm border border-zinc-800 graph-ui-hide">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 rounded-xl bg-zinc-900/90 p-1.5 backdrop-blur-sm border border-zinc-800 graph-ui-hide max-w-[95vw] overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent md:top-4 md:bottom-auto">
           {drawingTools.map((tool) => {
             const Icon = tool.icon;
             const isActive = settings.activeTool === tool.id;
@@ -95,7 +95,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
               title="Undo (Ctrl+Z)"
             >
               <Undo2 className="h-3.5 w-3.5" />
-              <span>Undo</span>
+              <span className="hidden sm:inline">Undo</span>
             </button>
 
             <div className="h-6 w-px bg-zinc-700" />
@@ -110,7 +110,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
               title="Redo (Ctrl+Y)"
             >
               <Redo2 className="h-3.5 w-3.5" />
-              <span>Redo</span>
+              <span className="hidden sm:inline">Redo</span>
             </button>
           </div>
         )}
@@ -139,13 +139,13 @@ function PreviewControl({ enabled, onToggle }: PreviewControlProps) {
       ) : (
         <Play className="h-3.5 w-3.5" />
       )}
-      <span>{enabled ? 'Exit Preview' : 'Preview'}</span>
+      <span className="hidden sm:inline">{enabled ? 'Exit Preview' : 'Preview'}</span>
     </button>
   );
 }
 
 interface ShareControlProps {
-  projectId?: string;
+  projectId?: number;
 }
 
 function ShareControl({ projectId }: ShareControlProps) {
@@ -164,7 +164,7 @@ function ShareControl({ projectId }: ShareControlProps) {
         title="Share project"
       >
         <Share2 className="h-3.5 w-3.5" />
-        <span>Share</span>
+        <span className="hidden sm:inline">Share</span>
       </button>
 
       <ShareModal

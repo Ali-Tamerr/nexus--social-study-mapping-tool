@@ -36,7 +36,7 @@ export function useProject(id: string) {
   return useQuery({
     queryKey: graphKeys.project(id),
     queryFn: async () => {
-      const project = await api.projects.getById(id);
+      const project = await api.projects.getById(Number(id));
       setCurrentProject(project);
       return project;
     },
@@ -65,7 +65,7 @@ export function useProjectNodes(projectId: string | undefined) {
     queryKey: graphKeys.nodes(projectId),
     queryFn: async () => {
       if (!projectId) return [];
-      const nodes = await api.nodes.getByProject(projectId);
+      const nodes = await api.nodes.getByProject(Number(projectId));
       setNodes(nodes);
       return nodes;
     },
@@ -76,7 +76,7 @@ export function useProjectNodes(projectId: string | undefined) {
 export function useNode(id: string) {
   return useQuery({
     queryKey: graphKeys.node(id),
-    queryFn: () => api.nodes.getById(id),
+    queryFn: () => api.nodes.getById(Number(id)),
     enabled: !!id,
   });
 }
@@ -91,7 +91,7 @@ export function useCreateNode() {
       api.nodes.create(node),
     onSuccess: (newNode: Node) => {
       addNode(newNode);
-      queryClient.invalidateQueries({ queryKey: graphKeys.nodes(currentProject?.id) });
+      queryClient.invalidateQueries({ queryKey: graphKeys.nodes(String(currentProject?.id)) });
     },
   });
 }
@@ -102,11 +102,11 @@ export function useUpdateNode() {
 
   return useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Node> }) =>
-      api.nodes.update(id, updates),
+      api.nodes.update(Number(id), updates),
     onMutate: async ({ id, updates }) => {
       await queryClient.cancelQueries({ queryKey: graphKeys.node(id) });
       const previousNode = queryClient.getQueryData(graphKeys.node(id));
-      updateNode(id, updates);
+      updateNode(Number(id), updates);
       return { previousNode };
     },
     onError: (_err, { id }, context) => {
@@ -126,10 +126,10 @@ export function useDeleteNode() {
   const currentProject = useGraphStore((s) => s.currentProject);
 
   return useMutation({
-    mutationFn: (id: string) => api.nodes.delete(id),
+    mutationFn: (id: string) => api.nodes.delete(Number(id)),
     onSuccess: (_, id) => {
-      deleteNode(id);
-      queryClient.invalidateQueries({ queryKey: graphKeys.nodes(currentProject?.id) });
+      deleteNode(Number(id));
+      queryClient.invalidateQueries({ queryKey: graphKeys.nodes(String(currentProject?.id)) });
     },
   });
 }
@@ -139,7 +139,7 @@ export function useCreateLink() {
   const addLink = useGraphStore((s) => s.addLink);
 
   return useMutation({
-    mutationFn: (data: { sourceId: string; targetId: string; relationshipType?: string; userId?: string }) =>
+    mutationFn: (data: { sourceId: number; targetId: number; relationshipType?: string; userId?: string }) =>
       api.links.create(data),
     onSuccess: (newLink: Link) => {
       addLink(newLink);
@@ -153,9 +153,9 @@ export function useDeleteLink() {
   const deleteLink = useGraphStore((s) => s.deleteLink);
 
   return useMutation({
-    mutationFn: (id: string) => api.links.delete(id),
+    mutationFn: (id: string) => api.links.delete(Number(id)),
     onSuccess: (_, id) => {
-      deleteLink(id);
+      deleteLink(Number(id));
       queryClient.invalidateQueries({ queryKey: graphKeys.links() });
     },
   });

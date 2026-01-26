@@ -89,7 +89,7 @@ export default function HomePage() {
       toggleCreateProject(false);
     } catch (err) {
       const demoProject: Project = {
-        id: crypto.randomUUID(),
+        id: Date.now() * -1,
         name: data.name,
         description: data.description,
         color: data.color,
@@ -106,7 +106,7 @@ export default function HomePage() {
 
   const handleOpenProject = (project: Project) => {
     setCurrentProject(project);
-    router.push('/project/editor');
+    router.push(`/project/${project.id}`);
   };
 
   const handleEditProject = async (project: Project, newName: string) => {
@@ -153,7 +153,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-zinc-950">
-      <Navbar>
+      <Navbar showSearch={false}>
         {!isAuthenticated && (
           <AuthNav onLogin={() => openAuth('login')} onSignup={() => openAuth('signup')} />
         )}

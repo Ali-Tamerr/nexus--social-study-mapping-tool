@@ -20,8 +20,8 @@ export function ProjectsToolbar({
   onCreateProject,
 }: ProjectsToolbarProps) {
   return (
-    <div className="mb-6 flex items-center justify-between">
-      <div className="w-72">
+    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="w-full sm:w-72">
         <SearchInput
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -29,13 +29,14 @@ export function ProjectsToolbar({
         />
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 sm:justify-end">
         <ViewModeToggle viewMode={viewMode} onChange={onViewModeChange} />
-        
+
         <Button
           variant="brand"
           onClick={onCreateProject}
           icon={<Plus className="h-4 w-4" />}
+          className="w-full sm:w-auto justify-center"
         >
           New project
         </Button>
@@ -54,18 +55,16 @@ export function ViewModeToggle({ viewMode, onChange }: ViewModeToggleProps) {
     <div className="flex rounded-lg bg-zinc-800/50 p-1">
       <button
         onClick={() => onChange('grid')}
-        className={`rounded-md p-1.5 transition-colors ${
-          viewMode === 'grid' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'
-        }`}
+        className={`rounded-md p-1.5 transition-colors ${viewMode === 'grid' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'
+          }`}
         title="Grid view"
       >
         <Grid3X3 className="h-4 w-4" />
       </button>
       <button
         onClick={() => onChange('list')}
-        className={`rounded-md p-1.5 transition-colors ${
-          viewMode === 'list' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'
-        }`}
+        className={`rounded-md p-1.5 transition-colors ${viewMode === 'list' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'
+          }`}
         title="List view"
       >
         <List className="h-4 w-4" />

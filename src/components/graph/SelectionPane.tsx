@@ -7,14 +7,14 @@ import { DrawnShape, Node as NodeType } from '@/types/knowledge';
 interface SelectionPaneProps {
     nodes: NodeType[];
     shapes: DrawnShape[];
-    onLocateNode: (nodeId: string, x: number, y: number) => void;
-    onLocateShape: (shapeId: string, x: number, y: number) => void;
-    onSelectNode: (nodeId: string) => void;
-    onSelectShape: (shapeId: string) => void;
-    onDeleteNode: (nodeId: string) => void;
-    onDeleteShape: (shapeId: string) => void;
-    selectedNodeIds: Set<string>;
-    selectedShapeIds: Set<string>;
+    onLocateNode: (nodeId: number, x: number, y: number) => void;
+    onLocateShape: (shapeId: number, x: number, y: number) => void;
+    onSelectNode: (nodeId: number) => void;
+    onSelectShape: (shapeId: number) => void;
+    onDeleteNode: (nodeId: number) => void;
+    onDeleteShape: (shapeId: number) => void;
+    selectedNodeIds: Set<number>;
+    selectedShapeIds: Set<number>;
     onClose: () => void;
     isPreviewMode?: boolean;
 }

@@ -79,10 +79,7 @@ export default function EditorPage() {
             dataLoadedRef.current = true;
 
             // Basic UUID check to prevent 400s
-            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-            if (!uuidRegex.test(projectId)) {
-                // If invalid ID (e.g. local demo string not uuid), don't fetch.
-                // Assuming standard UUIDs.
+            if (!projectId) {
                 setLoading(false);
                 return;
             }
@@ -101,7 +98,8 @@ export default function EditorPage() {
 
                 const GROUP_COLORS = ['#8B5CF6', '#355ea1', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4', '#84CC16'];
 
-                const hashString = (str: string) => {
+                const hashString = (numId: number) => {
+                    const str = String(numId);
                     let hash = 0;
                     for (let i = 0; i < str.length; i++) {
                         const char = str.charCodeAt(i);
@@ -166,7 +164,7 @@ export default function EditorPage() {
         const randomY = (Math.random() - 0.5) * 150;
 
         const demoNode = {
-            id: crypto.randomUUID(),
+            id: Date.now() * -1,
             title: 'New Node',
             content: '',
             excerpt: '',

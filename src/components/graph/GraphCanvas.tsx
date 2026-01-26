@@ -68,7 +68,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
     exportShapes.forEach(s => {
       try {
-        const pts = typeof s.points === 'string' ? JSON.parse(s.points) : s.points;
+        const pts = s.points;
         const padding = 5;
         pts.forEach((p: any) => {
           minX = Math.min(minX, p.x - padding);
@@ -209,7 +209,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const updateGroup = useGraphStore(state => state.updateGroup);
   const deleteGroup = useGraphStore(state => state.deleteGroup);
 
-  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<number>>(new Set());
   const [selectedLink, setSelectedLink] = useState<any | null>(null);
   const [hoveredLink, setHoveredLink] = useState<any | null>(null);
   const [isOutsideContent, setIsOutsideContent] = useState(false);
@@ -290,13 +290,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         if (dist > 5) return;
       }
 
-      const node = nodes.find((n) => n.id === String(nodeObj.id));
+      const node = nodes.find((n) => n.id === nodeObj.id);
       if (node) {
         setActiveNode(node);
       }
 
 
-      const nodeId = String(nodeObj.id);
+      const nodeId = Number(nodeObj.id);
       if (event.shiftKey) {
         setSelectedNodeIds(prev => {
           const next = new Set(prev);
@@ -332,8 +332,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const handleNodeHover = useCallback(
     (nodeObj: { id?: string | number } | null) => {
       if (nodeObj) {
-        const nodeId = String(nodeObj.id);
-        lastHoveredNodeIdRef.current = nodeId;
+        const nodeId = Number(nodeObj.id);
+        lastHoveredNodeIdRef.current = String(nodeId); // Keep ref as string if needed or update to number? 
+        // Actually refs might be used elsewhere. Let's make ref number if possible or cast.
+        // Update: lastHoveredNodeIdRef is defined as string | null. Let's check line 327.
         const node = nodes.find((n) => n.id === nodeId);
         setHoveredNode(node || null);
         setIsHoveringNode(true);
@@ -378,7 +380,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       const fontSize = Math.max(12 / globalScale, 4);
       ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
 
-      const nodeId = String(node.id);
+      const nodeId = Number(node.id);
       const isActive = activeNode?.id === nodeId;
       const isSelected = selectedNodeIds.has(nodeId);
       const isSearchMatch =
@@ -494,8 +496,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
   const apiDrawingToShape = useCallback((d: ApiDrawing): DrawnShape => ({
     id: d.id,
+    projectId: d.projectId,
     type: d.type as DrawnShape['type'],
-    points: JSON.parse(d.points),
+    points: d.points,
     color: d.color,
     width: d.width,
     style: d.style as DrawnShape['style'],
@@ -506,11 +509,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     synced: true,
   }), []);
 
-  const shapeToApiDrawing = useCallback((s: DrawnShape, projectId: string, groupId?: number) => ({
+  const shapeToApiDrawing = useCallback((s: DrawnShape, projectId: number, groupId?: number) => ({
     projectId,
     groupId: groupId ?? s.groupId,
     type: s.type,
-    points: JSON.stringify(s.points),
+    points: s.points,
     color: s.color,
     width: s.width,
     style: s.style,
@@ -679,7 +682,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const [textInputPos, setTextInputPos] = useState<{ x: number; y: number; worldX: number; worldY: number } | null>(null);
   const [textInputValue, setTextInputValue] = useState('');
 
-  const [selectedShapeIds, setSelectedShapeIds] = useState<Set<string>>(new Set());
+  const [selectedShapeIds, setSelectedShapeIds] = useState<Set<number>>(new Set());
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
   const [isHoveringShape, setIsHoveringShape] = useState(false);
   const [isHoveringNode, setIsHoveringNode] = useState(false);
@@ -693,11 +696,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const activeResizeHandleRef = useRef<ResizeHandle | null>(null);
   const resizeStartBoundsRef = useRef<ShapeBounds | null>(null);
   const resizeDragStartRef = useRef<{ x: number; y: number } | null>(null);
-  const resizingShapeIdRef = useRef<string | null>(null);
+  const resizingShapeIdRef = useRef<number | null>(null);
   const originalShapeRef = useRef<DrawnShape | null>(null);
   const [hoveredResizeHandle, setHoveredResizeHandle] = useState<ResizeHandle | null>(null);
   const [resizeUpdateCounter, setResizeUpdateCounter] = useState(0);
-  const [editingShapeId, setEditingShapeId] = useState<string | null>(null);
+  const [editingShapeId, setEditingShapeId] = useState<number | null>(null);
 
   const [isMiddleMousePanning, setIsMiddleMousePanning] = useState(false);
   const middleMouseStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -1058,7 +1061,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       const initialShapes = dragGroupRef.current.initialShapes;
       if (initialShapes.size > 0) {
         shapesRef.current = shapesRef.current.map(s => {
-          const initPoints = initialShapes.get(s.id);
+          const initPoints = initialShapes.get(String(s.id));
           if (initPoints) {
             return {
               ...s,
@@ -1090,7 +1093,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         if (selectedNodeIds.size > 0) {
           const currentGraphNodes = graphData.nodes as Array<{ id: string | number; x?: number; y?: number; fx?: number; fy?: number }>;
           currentGraphNodes.forEach(n => {
-            if (selectedNodeIds.has(String(n.id))) {
+            if (selectedNodeIds.has(Number(n.id))) {
               const newX = (n.fx ?? n.x ?? 0) + dx;
               const newY = (n.fy ?? n.y ?? 0) + dy;
               n.fx = newX; n.fy = newY; n.x = newX; n.y = newY;
@@ -1189,7 +1192,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     // Check if we're clicking ON a node by examining coordinates
     // Find the closest node within hit radius (handles overlapping nodes)
     const nodeHitRadius = 15 / scale;
-    let clickedNodeId: string | null = null;
+    let clickedNodeId: number | null = null;
     let closestDist = Infinity;
 
     graphDataRef.current.nodes.forEach((n: any) => {
@@ -1198,7 +1201,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist <= nodeHitRadius && dist < closestDist) {
         closestDist = dist;
-        clickedNodeId = String(n.id);
+        clickedNodeId = Number(n.id);
       }
     });
 
@@ -1207,12 +1210,12 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     // If we clicked on a node that is part of selection, start group drag
     // NOTE: Do NOT open editor here - wait for click handler to determine if it was a drag or click
     if (clickedNodeId && selectedNodeIds.has(clickedNodeId)) {
-      lastHoveredNodeIdRef.current = clickedNodeId;
+      lastHoveredNodeIdRef.current = String(clickedNodeId);
       lastNodeClickTimeRef.current = Date.now();
 
       const initialNodes = new Map();
       graphDataRef.current.nodes.forEach((n: any) => {
-        if (selectedNodeIds.has(String(n.id)) && String(n.id) !== clickedNodeId) {
+        if (selectedNodeIds.has(Number(n.id)) && Number(n.id) !== clickedNodeId) {
           initialNodes.set(String(n.id), { x: n.x, y: n.y, fx: n.fx, fy: n.fy });
         }
       });
@@ -1221,7 +1224,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       if (selectedShapeIdsRef.current.size > 0) {
         shapesRef.current.forEach(s => {
           if (selectedShapeIdsRef.current.has(s.id)) {
-            initialShapes.set(s.id, JSON.parse(JSON.stringify(s.points)));
+            initialShapes.set(String(s.id), s.points.map(p => ({ ...p })));
           }
         });
       }
@@ -1240,7 +1243,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     // If we clicked on a node that is NOT in selection, select it
     // NOTE: Do NOT open editor here - wait for click handler to determine if it was a drag or click
     if (clickedNodeId && !selectedNodeIds.has(clickedNodeId)) {
-      lastHoveredNodeIdRef.current = clickedNodeId;
+      lastHoveredNodeIdRef.current = String(clickedNodeId);
       lastNodeClickTimeRef.current = Date.now();
 
       // Select the node
@@ -1276,7 +1279,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       setShapes(finalShapes);
       const resizedShape = finalShapes.find(s => s.id === resizingShapeIdRef.current);
       if (resizedShape && resizedShape.synced !== false) {
-        api.drawings.update(resizedShape.id, { points: JSON.stringify(resizedShape.points) })
+        api.drawings.update(resizedShape.id, { points: resizedShape.points })
           .catch(
           // err => console.error('Failed to update drawing:', err)
         );
@@ -1292,7 +1295,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     if (isDraggingSelection && selectedShapeIds.size > 0) {
       filteredShapes.filter(s => selectedShapeIds.has(s.id)).forEach(s => {
         if (s.synced !== false) {
-          api.drawings.update(s.id, { points: JSON.stringify(s.points) })
+          api.drawings.update(s.id, { points: s.points })
             .catch(
             // err => console.error('Failed to update drawing:', err)
           );
@@ -1322,7 +1325,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         setShapes(finalShapes);
         finalShapes.forEach(s => {
           if (selectedShapeIds.has(s.id) && s.synced !== false) {
-            api.drawings.update(s.id, { points: JSON.stringify(s.points) })
+            api.drawings.update(s.id, { points: s.points })
               .catch(
               // err => console.error('Failed to update drawing:', err)
             );
@@ -1340,14 +1343,14 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       const minY = Math.min(marqueeStart.y, marqueeEnd.y);
       const maxY = Math.max(marqueeStart.y, marqueeEnd.y);
 
-      const newSelectedNodes = new Set<string>();
+      const newSelectedNodes = new Set<number>();
       graphDataRef.current.nodes.forEach((n: any) => {
         if (n.x >= minX && n.x <= maxX && n.y >= minY && n.y <= maxY) {
-          newSelectedNodes.add(String(n.id));
+          newSelectedNodes.add(Number(n.id));
         }
       });
 
-      const newSelectedShapes = new Set<string>();
+      const newSelectedShapes = new Set<number>();
       filteredShapes.forEach(s => {
         const cx = s.points.reduce((sum, p) => sum + p.x, 0) / s.points.length;
         const cy = s.points.reduce((sum, p) => sum + p.y, 0) / s.points.length;
@@ -1372,7 +1375,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     setIsNodeDragging(true);
     lastDragTimeRef.current = Date.now();
     if (!dragGroupRef.current?.active) return;
-    if (String(node.id) !== dragGroupRef.current.nodeId) return;
+    if (node.id !== dragGroupRef.current.nodeId) return;
 
     // Calculate delta from the dragged node's movement
     const initialNodes = dragGroupRef.current.initialNodes;
@@ -1405,7 +1408,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     const initialShapes = dragGroupRef.current.initialShapes;
     if (initialShapes.size > 0) {
       shapesRef.current = shapesRef.current.map(s => {
-        const initPoints = initialShapes.get(s.id);
+        const initPoints = initialShapes.get(String(s.id));
         if (initPoints) {
           return {
             ...s,
@@ -1432,12 +1435,12 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
       // Persist node positions for all selected nodes
       graphDataRef.current.nodes.forEach((n: any) => {
-        if (selectedNodeIds.has(String(n.id))) {
-          updateNode(String(n.id), { x: n.x, y: n.y });
+        if (selectedNodeIds.has(Number(n.id))) {
+          updateNode(n.id, { x: n.x, y: n.y });
 
-          const fullNode = storeNodes.find(sn => sn.id === String(n.id));
+          const fullNode = storeNodes.find(sn => sn.id === n.id);
           if (fullNode) {
-            api.nodes.update(String(n.id), {
+            api.nodes.update(n.id, {
               id: fullNode.id,
               title: fullNode.title,
               content: fullNode.content || '',
@@ -1461,7 +1464,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         setShapes(finalShapes);
         finalShapes.forEach(s => {
           if (selectedShapeIds.has(s.id)) {
-            api.drawings.update(s.id, { points: JSON.stringify(s.points) })
+            api.drawings.update(s.id, { points: s.points })
               .catch(() => { });
           }
         });
@@ -1470,7 +1473,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       dragGroupRef.current = null;
     } else if (node) {
       // Single node drag - persist position
-      const nodeId = String(node.id);
+      const nodeId = Number(node.id);
       updateNode(nodeId, { x: node.x, y: node.y });
 
       const fullNode = storeNodes.find(sn => sn.id === nodeId);
@@ -1655,7 +1658,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     }
 
     const newShape: DrawnShape = {
-      id: crypto.randomUUID(),
+      id: Date.now() * -1,
+      projectId: currentProject?.id || 0,
       type: graphSettings.activeTool,
       points: [...currentPoints],
       color: graphSettings.strokeColor,
@@ -1719,7 +1723,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
     if (isDrawing && currentPoints.length > 0) {
       const previewShape: DrawnShape = {
-        id: 'preview',
+        id: -9999,
+        projectId: currentProject?.id || 0,
         type: graphSettings.activeTool,
         points: currentPoints,
         color: graphSettings.strokeColor,
@@ -2010,7 +2015,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                         .catch(() => { });
                     } else {
                       const newShape: DrawnShape = {
-                        id: crypto.randomUUID(),
+                        id: Date.now() * -1,
+                        projectId: currentProject?.id || 0,
                         type: 'text',
                         points: [{ x: textInputPos.worldX, y: textInputPos.worldY }],
                         color: graphSettings.strokeColor,
@@ -2020,6 +2026,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                         fontSize: graphSettings.fontSize || 16,
                         fontFamily: graphSettings.fontFamily || 'Inter',
                         groupId: activeGroupId ?? undefined,
+                        synced: false,
                       };
                       addShape(newShape);
                       if (currentProject?.id) {
@@ -2057,7 +2064,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                       );
                     } else {
                       const newShape: DrawnShape = {
-                        id: crypto.randomUUID(),
+                        id: Date.now() * -1,
+                        projectId: currentProject?.id || 0,
                         type: 'text',
                         points: [{ x: textInputPos.worldX, y: textInputPos.worldY }],
                         color: graphSettings.strokeColor,
@@ -2067,6 +2075,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                         fontSize: graphSettings.fontSize || 16,
                         fontFamily: graphSettings.fontFamily || 'Inter',
                         groupId: activeGroupId ?? undefined,
+                        synced: false,
                       };
                       addShape(newShape);
                       if (currentProject?.id) {

@@ -38,10 +38,10 @@ export function NodeEditor() {
   const [newAttachmentName, setNewAttachmentName] = useState('');
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState('#8B5CF6');
-  const [selectedTargetNodeId, setSelectedTargetNodeId] = useState('');
+  const [selectedTargetNodeId, setSelectedTargetNodeId] = useState<number | ''>('');
   const [connectionDescription, setConnectionDescription] = useState('');
   const [connectionColor, setConnectionColor] = useState('#355ea1');
-  const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
+  const [editingConnectionId, setEditingConnectionId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -214,7 +214,7 @@ export function NodeEditor() {
     }
   };
 
-  const handleRemoveAttachment = async (attachmentId: string) => {
+  const handleRemoveAttachment = async (attachmentId: number) => {
     if (!activeNode) return;
     try {
       await api.attachments.delete(attachmentId);
@@ -249,7 +249,7 @@ export function NodeEditor() {
     }
   };
 
-  const handleRemoveTag = async (tagId: string) => {
+  const handleRemoveTag = async (tagId: number) => {
     if (!activeNode) return;
     try {
       await api.nodes.removeTag(activeNode.id, tagId);
@@ -308,7 +308,7 @@ export function NodeEditor() {
     }
   };
 
-  const handleRemoveConnection = async (linkId: string) => {
+  const handleRemoveConnection = async (linkId: number) => {
     try {
       await api.links.delete(linkId);
       deleteLink(linkId);
@@ -429,7 +429,7 @@ export function NodeEditor() {
 
   return (
     <>
-      <div className="fixed right-0 top-0 z-50 flex h-full w-96 flex-col border-l border-zinc-800 bg-zinc-900/95">
+      <div className="fixed right-0 top-0 z-50 flex h-full w-full sm:w-96 flex-col border-l border-zinc-800 bg-zinc-900/95">
         <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
           <h2 className="text-sm font-semibold text-white">Edit Node</h2>
           <button
@@ -743,7 +743,7 @@ export function NodeEditor() {
                         <label className="text-xs text-zinc-400">Connect to Node</label>
                         <select
                           value={selectedTargetNodeId}
-                          onChange={(e) => setSelectedTargetNodeId(e.target.value)}
+                          onChange={(e) => setSelectedTargetNodeId(e.target.value ? Number(e.target.value) : '')}
                           disabled={!!editingConnectionId}
                           className="mt-1 w-full rounded-lg bg-zinc-700 px-3 py-1.5 text-sm text-white outline-none disabled:opacity-50"
                         >

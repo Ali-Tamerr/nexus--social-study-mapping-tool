@@ -33,15 +33,15 @@ interface AppState {
   setCurrentUserId: (userId: string | null) => void;
   setProjects: (projects: Project[]) => void;
   addProject: (project: Project) => void;
-  updateProject: (id: string, updates: Partial<Project>) => void;
-  deleteProject: (id: string) => void;
+  updateProject: (id: number, updates: Partial<Project>) => void;
+  deleteProject: (id: number) => void;
   setCurrentProject: (project: Project | null) => void;
   
   // Drawing actions
   setShapes: (shapes: DrawnShape[]) => void;
   addShape: (shape: DrawnShape) => void;
-  updateShape: (id: string, updates: Partial<DrawnShape>) => void;
-  deleteShape: (id: string) => void;
+  updateShape: (id: number, updates: Partial<DrawnShape>) => void;
+  deleteShape: (id: number) => void;
   undo: () => void;
   redo: () => void;
   clearShapes: () => void;
@@ -59,14 +59,14 @@ interface AppState {
   setTags: (tags: Tag[]) => void;
   setGraphData: (data: GraphData) => void;
   addNode: (node: Node) => void;
-  updateNode: (id: string, updates: Partial<Node>) => void;
-  deleteNode: (id: string) => void;
+  updateNode: (id: number, updates: Partial<Node>) => void;
+  deleteNode: (id: number) => void;
   addLink: (link: Link) => void;
-  deleteLink: (id: string) => void;
-  addTagToNode: (nodeId: string, tag: Tag) => void;
-  removeTagFromNode: (nodeId: string, tagId: string) => void;
-  addAttachmentToNode: (nodeId: string, attachment: Attachment) => void;
-  removeAttachmentFromNode: (nodeId: string, attachmentId: string) => void;
+  deleteLink: (id: number) => void;
+  addTagToNode: (nodeId: number, tag: Tag) => void;
+  removeTagFromNode: (nodeId: number, tagId: number) => void;
+  addAttachmentToNode: (nodeId: number, attachment: Attachment) => void;
+  removeAttachmentFromNode: (nodeId: number, attachmentId: number) => void;
   setActiveNode: (node: Node | null) => void;
   setHoveredNode: (node: Node | null) => void;
   setSearchQuery: (query: string) => void;
@@ -137,7 +137,7 @@ export const useGraphStore = create<AppState>()(
       id: prev.id,
       name: updates.name ?? prev.name,
       color: updates.color ?? prev.color ?? '',
-      userId: updates.userId ?? prev.userId ?? '',
+      userId: updates.userId ?? prev.userId,
       wallpaper: encodeWallpaper(updates.wallpaper ?? prev.wallpaper ?? ''),
       description: updates.description ?? prev.description ?? '',
     };
@@ -209,7 +209,7 @@ export const useGraphStore = create<AppState>()(
     const fixedNodes = nodes.map((n) => {
       let customColor = n.customColor;
       if (!isValid(customColor)) {
-        customColor = NODE_COLORS[hashString(n.id) % NODE_COLORS.length];
+        customColor = NODE_COLORS[hashString(String(n.id)) % NODE_COLORS.length];
       }
       return { ...n, customColor };
     });
