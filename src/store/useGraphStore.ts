@@ -62,6 +62,7 @@ interface AppState {
   updateNode: (id: number, updates: Partial<Node>) => void;
   deleteNode: (id: number) => void;
   addLink: (link: Link) => void;
+  updateLink: (id: number, updates: Partial<Link>) => void;
   deleteLink: (id: number) => void;
   addTagToNode: (nodeId: number, tag: Tag) => void;
   removeTagFromNode: (nodeId: number, tagId: number) => void;
@@ -240,6 +241,10 @@ export const useGraphStore = create<AppState>()(
   
   addLink: (link) => set((state) => ({ 
     links: [...state.links, link] 
+  })),
+
+  updateLink: (id, updates) => set((state) => ({
+    links: state.links.map((l) => l.id === id ? { ...l, ...updates } : l)
   })),
   
   deleteLink: (id) => set((state) => ({

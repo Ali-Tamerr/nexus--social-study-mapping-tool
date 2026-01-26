@@ -151,7 +151,29 @@ export default function EditorPage() {
             return;
         }
 
-        const groupId = typeof activeGroupId === 'number' ? activeGroupId : 0;
+        let groupId = typeof activeGroupId === 'number' ? activeGroupId : 0;
+
+        // Verify group ID if defaulting to 0
+        if (groupId === 0) {
+            try {
+                const groups = await api.groups.getAll();
+                if (groups && groups.length > 0) {
+                    groupId = groups[0].id;
+                }
+            } catch (e) { }
+
+            // If still 0 (meaning no groups found or fetch failed), create one
+            if (groupId === 0) {
+                try {
+                    const newGroup = await api.groups.create({
+                        name: 'Default',
+                        color: '#808080',
+                        order: 0
+                    });
+                    if (newGroup) groupId = newGroup.id;
+                } catch (e) { }
+            }
+        }
 
         const GROUP_COLORS: Record<number, string> = {
             0: '#8B5CF6', 1: '#355ea1', 2: '#10B981', 3: '#F59E0B',
@@ -167,7 +189,7 @@ export default function EditorPage() {
             id: Date.now() * -1,
             title: 'New Node',
             content: '',
-            excerpt: '',
+
             projectId: projectId,
             groupId: groupId,
             customColor: randomColor,
@@ -183,7 +205,7 @@ export default function EditorPage() {
             const payload = {
                 title: 'New Node',
                 content: '',
-                excerpt: '',
+
                 projectId: projectId,
                 groupId: groupId,
                 customColor: randomColor,
@@ -202,7 +224,7 @@ export default function EditorPage() {
                     id: newNode.id,
                     title: newNode.title,
                     content: newNode.content || '',
-                    excerpt: newNode.excerpt || '',
+
                     groupId: newNode.groupId,
                     projectId: newNode.projectId,
                     userId: newNode.userId,

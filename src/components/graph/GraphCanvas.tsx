@@ -621,9 +621,21 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       });
 
       shapes.forEach(shape => {
-        shape.points.forEach(p => {
-          allPoints.push({ x: p.x, y: p.y });
-        });
+        let points = shape.points;
+        // Handle case where points might be a string (API inconsistency)
+        if (typeof points === 'string') {
+          try {
+            points = JSON.parse(points);
+          } catch (e) {
+            points = [];
+          }
+        }
+
+        if (Array.isArray(points)) {
+          points.forEach(p => {
+            allPoints.push({ x: p.x, y: p.y });
+          });
+        }
       });
 
 
@@ -1444,7 +1456,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               id: fullNode.id,
               title: fullNode.title,
               content: fullNode.content || '',
-              excerpt: fullNode.excerpt || '',
+
               groupId: fullNode.groupId,
               projectId: fullNode.projectId,
               userId: fullNode.userId,
@@ -1482,7 +1494,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           id: fullNode.id,
           title: fullNode.title,
           content: fullNode.content || '',
-          excerpt: fullNode.excerpt || '',
+
           groupId: fullNode.groupId,
           projectId: fullNode.projectId,
           userId: fullNode.userId,
@@ -1672,7 +1684,23 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     addShape(newShape);
 
     if (currentProject?.id) {
-      api.drawings.create(shapeToApiDrawing(newShape, currentProject.id, activeGroupId ?? undefined))
+      const saveDrawing = async () => {
+        let groupId = activeGroupId;
+        if (!groupId || groupId === 0) {
+          try {
+            const groups = await api.groups.getAll();
+            if (groups && groups.length > 0) groupId = groups[0].id;
+            else {
+              const newGroup = await api.groups.create({ name: 'Default', color: '#808080', order: 0 });
+              if (newGroup) groupId = newGroup.id;
+            }
+          } catch (e) { }
+        }
+
+        return api.drawings.create(shapeToApiDrawing(newShape, currentProject.id, groupId ?? undefined));
+      };
+
+      saveDrawing()
         .then(createdDrawing => {
           updateShape(newShape.id, { id: createdDrawing.id, synced: true });
           setSelectedShapeIds(prev => {
@@ -2030,7 +2058,22 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                       };
                       addShape(newShape);
                       if (currentProject?.id) {
-                        api.drawings.create(shapeToApiDrawing(newShape, currentProject.id, activeGroupId ?? undefined))
+                        const saveText = async () => {
+                          let groupId = activeGroupId;
+                          if (!groupId || groupId === 0) {
+                            try {
+                              const groups = await api.groups.getAll();
+                              if (groups && groups.length > 0) groupId = groups[0].id;
+                              else {
+                                const newGroup = await api.groups.create({ name: 'Default', color: '#808080', order: 0 });
+                                if (newGroup) groupId = newGroup.id;
+                              }
+                            } catch (e) { }
+                          }
+                          return api.drawings.create(shapeToApiDrawing(newShape, currentProject.id, groupId ?? undefined));
+                        };
+
+                        saveText()
                           .then(createdDrawing => {
                             updateShape(newShape.id, { id: createdDrawing.id });
                           })
@@ -2079,13 +2122,26 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                       };
                       addShape(newShape);
                       if (currentProject?.id) {
-                        api.drawings.create(shapeToApiDrawing(newShape, currentProject.id, activeGroupId ?? undefined))
+                        const saveText = async () => {
+                          let groupId = activeGroupId;
+                          if (!groupId || groupId === 0) {
+                            try {
+                              const groups = await api.groups.getAll();
+                              if (groups && groups.length > 0) groupId = groups[0].id;
+                              else {
+                                const newGroup = await api.groups.create({ name: 'Default', color: '#808080', order: 0 });
+                                if (newGroup) groupId = newGroup.id;
+                              }
+                            } catch (e) { }
+                          }
+                          return api.drawings.create(shapeToApiDrawing(newShape, currentProject.id, groupId ?? undefined));
+                        };
+
+                        saveText()
                           .then(createdDrawing => {
                             updateShape(newShape.id, { id: createdDrawing.id });
                           })
-                          .catch(
-                          // err => console.error('Failed to create drawing:', err)
-                        );
+                          .catch(() => { });
                       }
                     }
                   }

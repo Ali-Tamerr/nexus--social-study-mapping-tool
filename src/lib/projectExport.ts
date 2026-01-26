@@ -30,7 +30,6 @@ export async function exportProjectAsNxus(
     nodes: nodes.map(node => ({
       title: node.title,
       content: node.content,
-      excerpt: node.excerpt,
       groupId: node.groupId,
       customColor: node.customColor,
       x: node.x,

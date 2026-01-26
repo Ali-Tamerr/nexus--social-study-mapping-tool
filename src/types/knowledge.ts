@@ -3,8 +3,8 @@ export interface Project {
   name: string;
   description?: string;
   color?: string;
-  wallpaper?: string;
-  userId?: string;
+  wallpaper?: string | null;
+  userId: string; // UUID from auth.users.id
   createdAt: string;
   updatedAt: string;
   nodes?: Node[];
@@ -15,10 +15,10 @@ export interface Attachment {
   nodeId: number;
   fileName: string;
   fileUrl: string;
+  // Extra fields that might come from joins or logical extensions, keeping them optional if unsure
   contentType?: string;
   fileSize?: number;
-  userId?: string;
-  createdAt: string;
+  createdAt?: string; 
 }
 
 export interface Tag {
@@ -27,6 +27,7 @@ export interface Tag {
   color?: string;
   userId?: string;
   createdAt: string;
+  nodes?: Node[];
 }
 
 export interface Group {
@@ -34,24 +35,29 @@ export interface Group {
   name: string;
   color: string;
   order: number;
+  nodes?: Node[];
 }
 
 export interface Node {
   id: number;
-  projectId?: number;
   title: string;
-  content?: string;
-  excerpt?: string;
-  groupId: number;
-  customColor?: string;
-  userId?: string;
-  createdAt: string;
-  updatedAt: string;
+  content?: string | null;
+  groupId: number; // Required in API
+  projectId?: number | null;
+  userId?: string | null;
   x?: number | null;
   y?: number | null;
-  tags?: Tag[];
-  attachments?: Attachment[];
+  customColor?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  
+  // Relations
   group?: Group;
+  project?: Project;
+  tags?: Tag[];
+  linkSources?: Link[];
+  linkTargets?: Link[];
+  attachments?: Attachment[];
 }
 
 export interface Link {
@@ -59,8 +65,8 @@ export interface Link {
   sourceId: number;
   targetId: number;
   color: string;
-  description?: string;
-  userId?: string;
+  description?: string | null;
+  userId?: string | null;
   createdAt: string;
   source?: Node;
   target?: Node;
@@ -86,18 +92,20 @@ export type DrawingTool =
 export type StrokeStyle = 'solid' | 'dashed' | 'dotted';
 
 export interface DrawnShape {
-  id: number;
+  id: number; // API uses int. Frontend temp IDs might need management elsewhere.
   projectId: number;
-  type: DrawingTool;
+  type: DrawingTool; // API uses string, but constrained to tool types
   points: { x: number; y: number }[];
   color: string;
   width: number;
   style: StrokeStyle;
-  text?: string;
-  fontSize?: number;
-  fontFamily?: string;
-  groupId?: number;
-  synced?: boolean;
+  text?: string | null;
+  fontSize?: number | null;
+  fontFamily?: string | null;
+  groupId?: number | null;
+  synced?: boolean; // Frontend only
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface GraphSettings {
@@ -119,12 +127,13 @@ export interface PresenceState {
 }
 
 export interface Profile {
-  id: string;
-  email?: string;
-  displayName?: string;
-  avatarUrl?: string;
+  id: string; // UUID
+  email?: string | null;
+  displayName?: string | null;
+  avatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
+  passwordHash?: string; // Should not be exposed ideally
 }
 
 export interface RegisterRequest {

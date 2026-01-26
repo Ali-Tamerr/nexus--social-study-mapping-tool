@@ -59,7 +59,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
         onClose();
         resetForm();
       } else {
-        const profile = await api.profiles.getByEmail(email);
+        const profile = await api.auth.login({ email, password });
         login(profile);
         onClose();
         resetForm();

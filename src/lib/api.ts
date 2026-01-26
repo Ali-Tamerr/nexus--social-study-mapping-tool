@@ -1,6 +1,6 @@
-import type { Project, Node, Link, Tag, Attachment, Profile, RegisterRequest } from '@/types/knowledge';
+import type { Project, Node, Link, Tag, Attachment, Profile, RegisterRequest, DrawnShape } from '@/types/knowledge';
 
-const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7007';
+const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 const API_BASE_URL = RAW_API_URL.endsWith('/') ? RAW_API_URL.slice(0, -1) : RAW_API_URL;
 
 
@@ -66,8 +66,11 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit & { suppressL
       }
       
       if (!suppressLog) {
-        // console.error(`[API] Error ${response.status}:`, error);
-        // console.error(`[API] Raw Output:`, text);
+        console.error(`[API] ${fetchOptions.method || 'GET'} ${url} Error ${response.status}:`, error);
+        console.error(`[API] Raw Output:`, text);
+      }
+      if (error.errors) {
+        throw new Error(JSON.stringify(error.errors));
       }
       throw new Error(error.title || error.message || `API Error: ${response.status}`);
     }
@@ -80,16 +83,18 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit & { suppressL
     return toFrontend<T>(data);
   } catch (err) {
     if (!suppressLog) {
-      // console.error(`[API] Request failed:`, err);
+      console.error(`[API] Request failed:`, err);
     }
     throw err;
   }
 }
 
 async function fetchApiWithBody<T>(endpoint: string, method: string, body: unknown, suppressLog?: boolean): Promise<T> {
+  // We need to be careful not to double stringify if body is already prepared, but transformKeys expects object
+  // For drawings points, we already stringified it in the caller.
   const convertedBody = toApi(body);
   if (!suppressLog) {
-    //  console.log(`[API] ${method} ${endpoint} Payload:`, JSON.stringify(convertedBody, null, 2));
+     console.log(`[API] ${method} ${endpoint} Payload:`, JSON.stringify(convertedBody, null, 2));
   }
   
   return fetchApi<T>(endpoint, {
@@ -99,10 +104,22 @@ async function fetchApiWithBody<T>(endpoint: string, method: string, body: unkno
   });
 }
 
+// Helper to pick fields
+function pick<T, K extends keyof T>(obj: T, ...keys: K[]): Pick<T, K> {
+  const ret: any = {};
+  keys.forEach(key => {
+    if (obj[key] !== undefined) ret[key] = obj[key];
+  });
+  return ret;
+}
+
 export const api = {
   auth: {
     register: (data: RegisterRequest) =>
       fetchApiWithBody<Profile>('/api/auth/register', 'POST', data),
+    
+    login: (data: Pick<RegisterRequest, 'email' | 'password'>) =>
+      fetchApiWithBody<Profile>('/api/auth/login', 'POST', data),
   },
 
   projects: {
@@ -112,11 +129,15 @@ export const api = {
     getById: (id: number) =>
       fetchApi<Project>(`/api/projects/${id}`),
     
-    create: (data: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) =>
-      fetchApiWithBody<Project>('/api/projects', 'POST', data),
+    create: (data: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
+        const payload = pick(data, 'name', 'description', 'color', 'userId', 'wallpaper');
+        return fetchApiWithBody<Project>('/api/projects', 'POST', payload);
+    },
     
-    update: (id: number, data: Partial<Project>) =>
-      fetchApiWithBody<Project>(`/api/projects/${id}`, 'PUT', data),
+    update: (id: number, data: Partial<Project>) => {
+        const payload = pick(data, 'id', 'name', 'description', 'color', 'userId', 'wallpaper');
+        return fetchApiWithBody<Project>(`/api/projects/${id}`, 'PUT', payload);
+    },
     
     delete: (id: number) =>
       fetchApi<void>(`/api/projects/${id}`, { method: 'DELETE' }),
@@ -135,14 +156,18 @@ export const api = {
     search: (query: string) =>
       fetchApi<Node[]>(`/api/nodes/search?query=${encodeURIComponent(query)}`),
     
-    create: (data: Omit<Node, 'id' | 'createdAt' | 'updatedAt'>) =>
-      fetchApiWithBody<Node>('/api/nodes', 'POST', data),
+    create: (data: Omit<Node, 'id' | 'createdAt' | 'updatedAt'>) => {
+      const payload = pick(data, 'title', 'content', 'groupId', 'projectId', 'userId', 'x', 'y', 'customColor');
+      return fetchApiWithBody<Node>('/api/nodes', 'POST', payload);
+    },
     
-    update: (id: number, data: Partial<Node>) =>
-      fetchApiWithBody<Node>(`/api/nodes/${id}`, 'PUT', data),
+    update: (id: number, data: Partial<Node>) => {
+      const payload = pick(data, 'id', 'title', 'content', 'groupId', 'projectId', 'userId', 'x', 'y', 'customColor');
+      return fetchApiWithBody<Node>(`/api/nodes/${id}`, 'PUT', payload);
+    },
     
     updatePosition: (id: number, x: number, y: number) =>
-      fetchApiWithBody<Node>(`/api/nodes/${id}`, 'PUT', { x, y }),
+      fetchApiWithBody<Node>(`/api/nodes/${id}`, 'PUT', { id, x, y }),
     
     delete: (id: number) =>
       fetchApi<void>(`/api/nodes/${id}`, { method: 'DELETE', suppressLog: true }),
@@ -170,8 +195,10 @@ export const api = {
     create: (data: { sourceId: number; targetId: number; description?: string; userId?: string; color?: string }) =>
       fetchApiWithBody<Link>('/api/links', 'POST', data),
     
-    update: (id: number, data: Partial<Link>) =>
-      fetchApiWithBody<Link>(`/api/links/${id}`, 'PUT', data),
+    update: (id: number, data: Partial<Link>) => {
+      const payload = pick(data, 'id', 'sourceId', 'targetId', 'color', 'description', 'userId');
+      return fetchApiWithBody<Link>(`/api/links/${id}`, 'PUT', payload);
+    },
     
     delete: (id: number) =>
       fetchApi<void>(`/api/links/${id}`, { method: 'DELETE' }),
@@ -193,8 +220,10 @@ export const api = {
     create: (data: { name: string; color?: string; userId?: string }) =>
       fetchApiWithBody<Tag>('/api/tags', 'POST', data),
     
-    update: (id: number, data: Partial<Tag>) =>
-      fetchApiWithBody<Tag>(`/api/tags/${id}`, 'PUT', data),
+    update: (id: number, data: Partial<Tag>) => {
+        const payload = pick(data, 'id', 'name', 'color', 'userId');
+        return fetchApiWithBody<Tag>(`/api/tags/${id}`, 'PUT', payload);
+    },
     
     delete: (id: number) =>
       fetchApi<void>(`/api/tags/${id}`, { method: 'DELETE' }),
@@ -207,7 +236,7 @@ export const api = {
     getById: (id: number) =>
       fetchApi<Attachment>(`/api/attachments/${id}`),
     
-    create: (data: { nodeId: number; fileName: string; fileUrl: string; userId?: string }) =>
+    create: (data: { nodeId: number; fileName: string; fileUrl: string }) =>
       fetchApiWithBody<Attachment>('/api/attachments', 'POST', data),
     
     delete: (id: number) =>
@@ -246,14 +275,23 @@ export const api = {
   },
 
   drawings: {
-    getByProject: (projectId: number, groupId?: number) => {
+    getByProject: async (projectId: number, groupId?: number) => {
       let url = `/api/drawings?projectId=${projectId}`;
       if (groupId !== undefined) url += `&groupId=${groupId}`;
-      return fetchApi<ApiDrawing[]>(url);
+      const drawings = await fetchApi<DrawnShape[]>(url);
+      return drawings.map(d => ({
+        ...d,
+        points: typeof d.points === 'string' ? JSON.parse(d.points) : d.points
+      }));
     },
     
-    getById: (id: number) =>
-      fetchApi<ApiDrawing>(`/api/drawings/${id}`),
+    getById: async (id: number) => {
+      const d = await fetchApi<DrawnShape>(`/api/drawings/${id}`);
+      return {
+        ...d,
+        points: typeof d.points === 'string' ? JSON.parse(d.points) : d.points
+      };
+    },
     
     create: (data: {
       projectId: number;
@@ -267,8 +305,17 @@ export const api = {
       fontFamily?: string;
       groupId?: number;
     }) => {
-      // Backend expects Points as array of objects
-      return fetchApiWithBody<ApiDrawing>('/api/drawings', 'POST', data);
+      // API expects Points as a JSON string
+      const payload = {
+        ...data,
+        points: JSON.stringify(data.points)
+      };
+      // We know response will have string points, we should parse it back for the frontend
+      return fetchApiWithBody<any>('/api/drawings', 'POST', payload)
+        .then(d => ({
+          ...d,
+          points: typeof d.points === 'string' ? JSON.parse(d.points) : d.points
+        })) as Promise<DrawnShape>;
     },
     
     update: (id: number, data: Partial<{
@@ -282,7 +329,17 @@ export const api = {
       fontFamily: string;
       groupId: number;
     }>) => {
-      return fetchApiWithBody<ApiDrawing>(`/api/drawings/${id}`, 'PUT', data);
+      const payload = {
+        ...data,
+      } as any;
+      if (data.points) {
+        payload.points = JSON.stringify(data.points);
+      }
+      return fetchApiWithBody<any>(`/api/drawings/${id}`, 'PUT', payload)
+        .then(d => ({
+            ...d,
+            points: typeof d.points === 'string' ? JSON.parse(d.points) : d.points
+        })) as Promise<DrawnShape>;
     },
     
     delete: (id: number) =>
@@ -290,18 +347,4 @@ export const api = {
   },
 };
 
-export interface ApiDrawing {
-  id: number;
-  projectId: number;
-  groupId?: number;
-  type: string;
-  points: { x: number; y: number }[];
-  color: string;
-  width: number;
-  style: string;
-  text: string | null;
-  fontSize: number | null;
-  fontFamily: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export type ApiDrawing = DrawnShape;

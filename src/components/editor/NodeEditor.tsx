@@ -24,6 +24,7 @@ export function NodeEditor() {
   const nodes = useGraphStore((s) => s.nodes);
   const links = useGraphStore((s) => s.links);
   const addLink = useGraphStore((s) => s.addLink);
+  const updateLink = useGraphStore((s) => s.updateLink);
   const deleteLink = useGraphStore((s) => s.deleteLink);
   const { user } = useAuthStore();
   const { showToast, showConfirmation } = useToast();
@@ -117,7 +118,7 @@ export function NodeEditor() {
         id: activeNode.id,
         title,
         content: content || '',
-        excerpt: activeNode.excerpt || '',
+
         groupId: activeNode.groupId,
         customColor,
         projectId: activeNode.projectId,
@@ -367,8 +368,7 @@ export function NodeEditor() {
         userId: userId,
       });
 
-      deleteLink(editingConnectionId);
-      addLink(updatedLink);
+      updateLink(editingConnectionId, updatedLink);
 
       setSelectedTargetNodeId('');
       setConnectionDescription('');

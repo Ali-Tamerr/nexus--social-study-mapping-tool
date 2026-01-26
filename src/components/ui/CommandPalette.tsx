@@ -108,7 +108,7 @@ export function CommandPalette() {
           id: newNode.id,
           title: newNode.title,
           content: newNode.content || '',
-          excerpt: newNode.excerpt || '',
+
           groupId: newNode.groupId,
           projectId: newNode.projectId,
           userId: newNode.userId,
