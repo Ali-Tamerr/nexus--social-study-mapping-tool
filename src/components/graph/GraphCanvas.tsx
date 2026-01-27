@@ -958,6 +958,87 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             setActiveNode(null);
           }
         }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) return;
+
+        const selectedNodes = graphDataRef.current.nodes.filter((n: any) => selectedNodeIdsRef.current.has(Number(n.id)));
+        const selectedShapes = shapesRef.current.filter(s => selectedShapeIdsRef.current.has(s.id));
+
+        if (selectedNodes.length > 0 || selectedShapes.length > 0) {
+          clipboardRef.current = {
+            nodes: selectedNodes.map((n: any) => ({ ...n })), // Shallow copy properties
+            shapes: selectedShapes.map(s => ({ ...s, points: [...s.points] })) // Deep copy points
+          };
+          // Optional: Display "Copied" toast
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) return;
+
+        if (clipboardRef.current) {
+          e.preventDefault();
+          const { nodes: cpNodes, shapes: cpShapes } = clipboardRef.current;
+          const { currentProject } = useGraphStore.getState();
+          const currentUserId = useGraphStore.getState().currentUserId; // Ensure we have this
+
+          if (!currentProject) return;
+
+          // Deselect all
+          setSelectedNodeIds(new Set());
+          setSelectedShapeIds(new Set());
+
+          const newSelectedNodes = new Set<number>();
+          const newSelectedShapes = new Set<number>();
+          const offset = 20;
+
+          // Paste Nodes
+          cpNodes.forEach(async (n: any) => {
+            try {
+              const payload = {
+                title: n.title,
+                content: n.content || '',
+                projectId: currentProject.id, // Paste into current project
+                groupId: n.groupId, // Keep group? If cross-project paste, this might default to 0. 
+                userId: currentUserId || n.userId, // Use current user
+                customColor: n.customColor,
+                x: (n.x || 0) + offset,
+                y: (n.y || 0) + offset,
+              };
+
+              const newNode = await api.nodes.create(payload);
+              useGraphStore.getState().addNode(newNode);
+              newSelectedNodes.add(newNode.id);
+              // Force update selections after async
+              setSelectedNodeIds(prev => new Set([...prev, newNode.id]));
+            } catch (err) { }
+          });
+
+          // Paste Shapes
+          cpShapes.forEach(async (s) => {
+            try {
+              const newPoints = s.points.map((p: any) => ({ x: p.x + offset, y: p.y + offset }));
+              const payload = {
+                projectId: currentProject.id,
+                type: s.type,
+                points: newPoints,
+                color: s.color,
+                width: s.width,
+                style: s.style,
+                text: s.text,
+                fontSize: s.fontSize,
+                fontFamily: s.fontFamily,
+                groupId: s.groupId
+              };
+
+              const newShape = await api.drawings.create(payload);
+              useGraphStore.getState().addShape(newShape);
+              newSelectedShapes.add(newShape.id);
+              // Force update selection
+              setSelectedShapeIds(prev => new Set([...prev, newShape.id]));
+            } catch (err) { }
+          });
+        }
       } else if (e.key === 'Escape') {
         setSelectedShapeIds(new Set());
         setSelectedNodeIds(new Set());
@@ -985,7 +1066,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const selectedNodeIdsRef = useRef(selectedNodeIds);
   selectedNodeIdsRef.current = selectedNodeIds; // Update immediately in render body
 
-
+  // Clipboard Ref for Copy/Paste
+  const clipboardRef = useRef<{ nodes: any[]; shapes: any[] } | null>(null);
 
   // selectedShapeIdsRef is already defined above
   const graphDataRef = useRef(graphData);
