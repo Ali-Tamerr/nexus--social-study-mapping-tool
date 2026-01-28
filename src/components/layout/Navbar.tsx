@@ -4,11 +4,13 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
 import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
-import { Search, ChevronDown, Image, Save, LayoutGrid, ChevronRight } from 'lucide-react';
+import { Search, ChevronDown, Image, Save, LayoutGrid, ChevronRight, Plus } from 'lucide-react';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useGraphStore } from '@/store/useGraphStore';
 import { createColorImage } from '@/lib/imageUtils';
+import { SearchInput } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 
 interface NavbarProps {
   showSearch?: boolean;
@@ -27,8 +29,8 @@ export function Navbar({ showSearch = true, onSearchClick, children }: NavbarPro
             <NextImage src={NexusLogo} alt="Nexus Logo" fill className="object-contain" />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-white font-light font-ka1">Nexus</h1>
-            <p className="text-[10px] text-zinc-400">Social Study Mapping Tool</p>
+            <h1 className="text-lg max-md:text-sm font-bold tracking-tight text-white font-light font-ka1">Nexus</h1>
+            <p className="text-[10px] max-md:text-[8px] text-zinc-400">Social Study Mapping Tool</p>
           </div>
         </Link>
       </div>
@@ -57,10 +59,11 @@ interface ProjectNavbarProps {
   projectName?: string;
   projectColor?: string;
   nodeCount?: number;
-  children?: React.ReactNode;
   onExportPNG?: () => void;
   onExportJPG?: () => void;
   onExportProject?: () => void;
+  onAddNode?: () => void;
+  isAddingNode?: boolean;
 }
 
 const WALLPAPER_COLORS = [
@@ -76,13 +79,27 @@ const WALLPAPER_COLORS = [
   '#1a1a1a', // Jet
 ];
 
-export function ProjectNavbar({ projectName, projectColor, nodeCount = 0, children, onExportPNG, onExportJPG, onExportProject }: ProjectNavbarProps) {
+export function ProjectNavbar({
+  projectName,
+  projectColor,
+  nodeCount = 0,
+  onExportPNG,
+  onExportJPG,
+  onExportProject,
+  onAddNode,
+  isAddingNode
+}: ProjectNavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWallpaperMenuOpen, setIsWallpaperMenuOpen] = useState(false);
   const [isSaveAsMenuOpen, setIsSaveAsMenuOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+
   const menuRef = useRef<HTMLDivElement>(null);
+
   const updateProject = useGraphStore(state => state.updateProject);
   const currentProject = useGraphStore(state => state.currentProject);
+  const searchQuery = useGraphStore(state => state.searchQuery);
+  const setSearchQuery = useGraphStore(state => state.setSearchQuery);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -105,8 +122,8 @@ export function ProjectNavbar({ projectName, projectColor, nodeCount = 0, childr
   };
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-zinc-800 bg-zinc-900/50 px-4">
-      <div className="flex items-center gap-4">
+    <header className="relative flex h-14 items-center justify-between border-b border-zinc-800 bg-zinc-900/50 px-2 sm:px-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -142,7 +159,6 @@ export function ProjectNavbar({ projectName, projectColor, nodeCount = 0, childr
               </div>
 
               <div className="my-1 border-t border-zinc-800" />
-
 
               <div className="relative">
                 <button
@@ -207,23 +223,77 @@ export function ProjectNavbar({ projectName, projectColor, nodeCount = 0, childr
         </div>
 
         <div className="h-6 w-px bg-zinc-800" />
-
         <div className="flex items-center gap-2">
-          {/* {projectColor && (
-            <div
-              className="h-3 w-3 rounded-full"
-              style={{ backgroundColor: projectColor }}
-            />
-          )} */}
           <div>
-            <h1 className="text-sm font-semibold text-white max-w-[120px] sm:max-w-xs truncate" title={projectName || 'Project'}>{projectName || 'Project'}</h1>
-            {/* <p className="text-[10px] text-zinc-500">{nodeCount} nodes</p> */}
+            <h1 className="text-sm font-semibold text-white max-w-[80px] xs:max-w-[120px] sm:max-w-xs truncate" title={projectName || 'Project'}>{projectName || 'Project'}</h1>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        {children}
+      <div className="flex items-center gap-1.5 sm:gap-3">
+        <div className="flex items-center">
+          {/* Mobile Search Toggle */}
+          {!isMobileSearchOpen && (
+            <button
+              className="md:hidden flex items-center justify-center h-9 w-9 text-zinc-400 hover:text-white border border-zinc-600 hover:bg-zinc-800 rounded-full transition-colors"
+              onClick={() => setIsMobileSearchOpen(true)}
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          )}
+
+          {/* Desktop Search */}
+          <div className="hidden md:block w-64 transition-all duration-300">
+            <SearchInput
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search nodes..."
+            />
+          </div>
+
+          {/* Mobile Search Overlay */}
+          {isMobileSearchOpen && (
+            <div className="fixed top-0 left-0 right-0 h-14 z-[200] flex items-center bg-zinc-950 px-2 sm:px-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex-1 relative max-w-4xl mx-auto w-full flex items-center">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search nodes..."
+                  autoFocus
+                  className="w-full h-10 rounded-lg border border-zinc-800 bg-zinc-900 pl-9 pr-4 text-sm text-zinc-200 placeholder:text-zinc-500 focus:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') setIsMobileSearchOpen(false);
+                  }}
+                  onBlur={(e) => {
+                    if (!e.target.value) setIsMobileSearchOpen(false);
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => {
+                  setIsMobileSearchOpen(false);
+                  setSearchQuery('');
+                }}
+                className="ml-3 text-sm font-medium text-zinc-400 hover:text-white whitespace-nowrap"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+
+        {onAddNode && (
+          <Button
+            variant="brand"
+            onClick={onAddNode}
+            loading={isAddingNode}
+            icon={<Plus className="h-4 w-4" />}
+            className="px-2 sm:px-4"
+          >
+            <span className="hidden md:inline">Add Node</span>
+          </Button>
+        )}
         <UserMenu />
       </div>
     </header>

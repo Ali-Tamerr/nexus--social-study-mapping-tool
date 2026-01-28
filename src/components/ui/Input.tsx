@@ -29,7 +29,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             className={`
               w-full h-full rounded-lg bg-zinc-800 text-sm text-white placeholder-zinc-500
               outline-none ring-1 ring-zinc-700 transition-all focus:ring-[#355ea1]
-              ${icon ? 'pl-10 pr-4' : 'px-4'}  py-2.5
+              ${icon ? 'pr-4 pl-10' : 'px-4'}  py-2.5
               ${error ? 'ring-red-500' : ''}
               ${className}
             `}

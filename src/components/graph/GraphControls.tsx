@@ -44,7 +44,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
   return (
     <>
       {!settings.isPreviewMode && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 rounded-xl bg-zinc-900/90 p-1.5 backdrop-blur-sm border border-zinc-800 graph-ui-hide max-w-[95vw] overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent md:top-4 md:bottom-auto">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 rounded-xl bg-zinc-900/90 p-1.5 backdrop-blur-sm border border-zinc-800 graph-ui-hide max-w-[95vw] overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
           {drawingTools.map((tool) => {
             const Icon = tool.icon;
             const isActive = settings.activeTool === tool.id;
@@ -66,12 +66,12 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
       )}
 
       {!settings.isPreviewMode && settings.activeTool === 'pen' && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 graph-ui-hide">
+        <div className="absolute top-[80px] left-1/2 -translate-x-1/2 z-30 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 graph-ui-hide w-max">
           Click and drag, release when you're finished
         </div>
       )}
 
-      <div className="absolute right-4 top-4 z-30 flex flex-col gap-2 graph-ui-hide">
+      <div className="absolute right-2.5 top-[4.5rem] z-30 flex flex-col items-end gap-2 graph-ui-hide md:top-4">
         <div className="flex items-center gap-2 rounded-xl bg-zinc-900/90 p-2 backdrop-blur-sm border border-zinc-800">
           <PreviewControl
             enabled={settings.isPreviewMode}

@@ -12,7 +12,7 @@ import { getFriendlyErrorMessage } from '@/utils/errorUtils';
 
 import { LoadingScreen, LoadingOverlay } from '@/components/ui';
 import { Navbar, AuthNav } from '@/components/layout';
-import { ProjectGrid, ProjectsToolbar, CreateProjectModal } from '@/components/projects';
+import { ProjectGrid, ProjectsToolbar, CreateProjectModal, EditProjectModal } from '@/components/projects';
 import { WelcomeHero } from '@/components/home/WelcomeHero';
 import { AuthModal } from '@/components/auth/AuthModal';
 
@@ -54,7 +54,7 @@ export default function HomePage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -116,14 +116,25 @@ export default function HomePage() {
     router.push('/project/editor');
   };
 
-  const handleEditProject = async (project: Project, newName: string) => {
+  const handleEditProjectClick = (project: Project) => {
+    setEditingProject(project);
+  };
+
+  const handleUpdateProject = async (data: { name: string; description?: string }) => {
+    if (!editingProject) return;
+
+    setLoading(true);
     try {
-      await api.projects.update(project.id, { ...project, name: newName });
-      setProjects(projects.map(p => p.id === project.id ? { ...p, name: newName } : p));
-      showToast('Project renamed', 'success');
+      const updatedProject = { ...editingProject, ...data };
+      await api.projects.update(editingProject.id, updatedProject);
+      setProjects(projects.map(p => p.id === editingProject.id ? updatedProject : p));
+      setEditingProject(null);
+      showToast('Project updated successfully', );
     } catch (err) {
-      setProjects(projects.map(p => p.id === project.id ? { ...p, name: newName } : p));
+      console.error('Failed to update project:', err);
       showToast(getFriendlyErrorMessage(err), 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -139,9 +150,6 @@ export default function HomePage() {
       showToast('Project deleted', 'success');
     } catch (err) {
       console.error('Failed to delete project:', err);
-      // Even if API fails, delete locally for now? Or show error.
-      // Better only local if error is 404.
-      // For now, assume it might be local only or sync issue.
       deleteProject(project.id);
       showToast('Project deleted (local)', 'info');
     } finally {
@@ -192,7 +200,7 @@ export default function HomePage() {
                 projects={filteredProjects}
                 viewMode={viewMode}
                 onProjectClick={handleOpenProject}
-                onProjectEdit={handleEditProject}
+                onProjectEdit={handleEditProjectClick}
                 onProjectDelete={handleDeleteProject}
               />
             )}
@@ -206,6 +214,19 @@ export default function HomePage() {
         onSubmit={handleCreateProject}
         loading={isLoading}
       />
+
+      {editingProject && (
+        <EditProjectModal
+          isOpen={true}
+          onClose={() => setEditingProject(null)}
+          onSubmit={handleUpdateProject}
+          loading={isLoading}
+          initialData={{
+            name: editingProject.name,
+            description: editingProject.description
+          }}
+        />
+      )}
 
       <AuthModal
         isOpen={showAuthModal}

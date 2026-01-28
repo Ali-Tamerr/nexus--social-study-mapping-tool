@@ -30,7 +30,9 @@ export function ProjectsToolbar({
       </div>
 
       <div className="flex items-center justify-between gap-3 sm:justify-end">
-        <ViewModeToggle viewMode={viewMode} onChange={onViewModeChange} />
+        <div className="hidden sm:block">
+          <ViewModeToggle viewMode={viewMode} onChange={onViewModeChange} />
+        </div>
 
         <Button
           variant="brand"

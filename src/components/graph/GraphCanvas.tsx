@@ -631,6 +631,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       });
 
       shapes.forEach(shape => {
+        if (activeGroupId !== null && activeGroupId !== undefined && shape.groupId !== activeGroupId) return;
+
         let points = shape.points;
         // Handle case where points might be a string (API inconsistency)
         if (typeof points === 'string') {
@@ -1952,6 +1954,107 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     }
   }, [isSelectTool, isHoveringNode, filteredShapes, selectedShapeIds, screenToWorld, graphTransform.k, getShapeBounds, pushToUndoStack, shapes, isPointNearShape]);
 
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+
+    // Check if we are touching UI
+    const target = e.target as HTMLElement;
+    if (target.closest('.graph-ui-hide') || target.closest('button')) return;
+
+    if (!isPanTool) {
+      // e.preventDefault(); // Prevent scrolling while drawing/selecting
+    }
+
+    const syntheticEvent = {
+      ...e,
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      button: 0,
+      buttons: 1,
+      target: e.target,
+      currentTarget: e.currentTarget,
+      preventDefault: () => { }, // e.preventDefault(),
+      stopPropagation: () => e.stopPropagation(),
+      shiftKey: e.shiftKey,
+      altKey: e.altKey,
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey,
+    } as unknown as React.MouseEvent;
+
+    handleContainerMouseDownCapture(syntheticEvent);
+    handleSelectMouseDown(syntheticEvent);
+  }, [handleContainerMouseDownCapture, handleSelectMouseDown, isPanTool]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+
+    // if (!isPanTool) e.preventDefault();
+
+    const syntheticEvent = {
+      ...e,
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      target: e.target,
+      currentTarget: e.currentTarget,
+      preventDefault: () => { }, // e.preventDefault(),
+      stopPropagation: () => e.stopPropagation(),
+      shiftKey: e.shiftKey,
+    } as unknown as React.MouseEvent;
+
+    handleContainerMouseMove(syntheticEvent);
+  }, [handleContainerMouseMove, isPanTool]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    // e.preventDefault();
+    const touch = e.changedTouches[0];
+
+    const syntheticEvent = {
+      ...e,
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      button: 0,
+      target: e.target,
+      currentTarget: e.currentTarget,
+      preventDefault: () => { }, //e.preventDefault(),
+      stopPropagation: () => e.stopPropagation(),
+    } as unknown as React.MouseEvent;
+
+    handleContainerMouseUpCapture(syntheticEvent);
+  }, [handleContainerMouseUpCapture]);
+
+  const handleCanvasTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const syntheticEvent = {
+      ...e,
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      target: e.target,
+      currentTarget: e.currentTarget
+    } as unknown as React.MouseEvent;
+    handleCanvasMouseDown(syntheticEvent);
+  }, [handleCanvasMouseDown]);
+
+  const handleCanvasTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const syntheticEvent = {
+      ...e,
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      target: e.target,
+      currentTarget: e.currentTarget
+    } as unknown as React.MouseEvent;
+    handleCanvasMouseMove(syntheticEvent);
+  }, [handleCanvasMouseMove]);
+
+  const handleCanvasTouchEnd = useCallback((e: React.TouchEvent) => {
+    handleCanvasMouseUp();
+  }, [handleCanvasMouseUp]);
+
+
   return (
     <div
       ref={containerRef}
@@ -1966,6 +2069,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       onMouseDownCapture={handleContainerMouseDownCapture}
       onMouseDown={handleSelectMouseDown}
       onMouseUpCapture={handleContainerMouseUpCapture}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       {isMounted ? (
         <>
@@ -2086,6 +2192,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               onMouseMove={handleCanvasMouseMove}
               onMouseUp={handleCanvasMouseUp}
               onMouseLeave={handleCanvasMouseUp}
+              onTouchStart={handleCanvasTouchStart}
+              onTouchMove={handleCanvasTouchMove}
+              onTouchEnd={handleCanvasTouchEnd}
             />
           )}
           {isSelectTool && (
@@ -2394,10 +2503,18 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               }
             });
 
-            shapesRef.current.forEach(shape => {
-              shape.points.forEach(p => {
-                allPoints.push({ x: p.x, y: p.y });
-              });
+            shapes.forEach(shape => {
+              if (activeGroupId !== null && activeGroupId !== undefined && shape.groupId !== activeGroupId) return;
+
+              let points = shape.points;
+              if (typeof points === 'string') {
+                try { points = JSON.parse(points); } catch (e) { points = []; }
+              }
+              if (Array.isArray(points)) {
+                points.forEach(p => {
+                  allPoints.push({ x: p.x, y: p.y });
+                });
+              }
             });
 
             if (allPoints.length === 0) return;
@@ -2423,7 +2540,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       <button
         onClick={() => setShowSelectionPane(!showSelectionPane)}
         onMouseDown={(e) => e.stopPropagation()}
-        className={`absolute bottom-4 right-4 z-30 flex items-center gap-2 rounded-lg px-3 py-2 text-sm shadow-lg backdrop-blur-sm border transition-all graph-ui-hide ${showSelectionPane
+        className={`absolute bottom-4 right-4 z-30 flex items-center gap-2 rounded-lg px-3 h-9 text-sm shadow-lg backdrop-blur-sm border transition-all graph-ui-hide ${showSelectionPane
           ? 'bg-zinc-700 text-white border-zinc-600'
           : 'bg-zinc-800/90 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-white hover:border-zinc-600'
           }`}
@@ -2431,7 +2548,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
-        Selection Pane
+        <span className="hidden sm:inline">Selection Pane</span>
       </button>
 
       {/* Selection Pane */}

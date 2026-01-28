@@ -231,33 +231,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         projectColor={currentProject?.color}
         nodeCount={filteredNodes.length}
         onExportPNG={handleExportPNG}
-      >
-        <div className="hidden lg:block w-64">
-          <SearchInput
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search nodes..."
-          />
-        </div>
-
-        <Button
-          variant="ghost"
-          onClick={() => toggleCommandPalette()}
-          className="lg:hidden px-2"
-          icon={<Search className="h-4 w-4" />}
-        >
-          <span className="sr-only">Search</span>
-        </Button>
-
-        <Button
-          variant="brand"
-          onClick={handleCreateNode}
-          loading={isLoading}
-          icon={<Plus className="h-4 w-4" />}
-        >
-          <span className="hidden sm:inline">Add Node</span>
-        </Button>
-      </ProjectNavbar>
+        onAddNode={handleCreateNode}
+        isAddingNode={isLoading}
+      />
 
       {error && (
         <div className="border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-400">
