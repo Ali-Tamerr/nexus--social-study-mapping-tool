@@ -111,7 +111,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
       )}
 
       {!settings.isPreviewMode && settings.activeTool === 'pen' && (
-        <div className="absolute top-[80px] left-1/2 -translate-x-1/2 z-30 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 graph-ui-hide w-max">
+        <div className="absolute max-md:hidden top-[80px] left-1/2 -translate-x-1/2 z-30 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 graph-ui-hide w-max">
           Click and drag, release when you're finished
         </div>
       )}

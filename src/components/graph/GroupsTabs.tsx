@@ -192,7 +192,7 @@ export function GroupsTabs({
 
     return (
 
-        <div className="absolute bottom-4 left-4 right-16 sm:right-44 flex items-center gap-1.5 sm:gap-0 pointer-events-none">
+        <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 right-16 sm:right-44 flex items-center gap-1.5 sm:gap-0 pointer-events-none">
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pointer-events-auto pr-1" onWheel={(e) => {
                 // Determine if we are at the ends of the scroll
                 const element = e.currentTarget;

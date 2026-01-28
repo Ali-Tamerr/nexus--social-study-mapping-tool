@@ -23,6 +23,8 @@ export default function EditorPage() {
     const router = useRouter();
     const [isMounted, setIsMounted] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [isInitializing, setIsInitializing] = useState(true);
     const graphCanvasRef = useRef<GraphCanvasHandle>(null);
 
     const handleExportPNG = () => {
@@ -78,13 +80,14 @@ export default function EditorPage() {
 
             dataLoadedRef.current = true;
 
-            // Basic UUID check to prevent 400s
             if (!projectId) {
                 setLoading(false);
+                setIsInitializing(false);
                 return;
             }
 
             setLoading(true);
+            setLoadingProgress(10);
             setError(null);
 
             try {
@@ -95,6 +98,7 @@ export default function EditorPage() {
                     wallpaper: decodeWallpaper(apiProject.wallpaper) || currentProject?.wallpaper,
                 };
                 setCurrentProject(mergedProject);
+                setLoadingProgress(35);
 
                 const GROUP_COLORS = ['#8B5CF6', '#355ea1', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4', '#84CC16'];
 
@@ -118,6 +122,7 @@ export default function EditorPage() {
                     return n;
                 });
                 setNodes(projectNodes);
+                setLoadingProgress(75);
 
                 const allLinks = await api.links.getAll();
                 const nodeIds = new Set(projectNodes.map(n => n.id));
@@ -125,12 +130,14 @@ export default function EditorPage() {
                     l => nodeIds.has(l.sourceId) || nodeIds.has(l.targetId)
                 );
                 setLinks(projectLinks);
+                setLoadingProgress(100);
             } catch (err: any) {
                 console.warn('Failed to load project data:', err.message);
                 setNodes([]);
                 setLinks([]);
             } finally {
                 setLoading(false);
+                setTimeout(() => setIsInitializing(false), 500);
             }
         };
 
@@ -245,12 +252,12 @@ export default function EditorPage() {
 
     const filteredNodes = filterNodes(nodes, searchQuery);
 
-    if (!hasHydrated || !isMounted || !isAuthenticated) {
-        return <LoadingScreen />;
+    if (!hasHydrated || !isMounted || !isAuthenticated || isInitializing) {
+        return <LoadingScreen progress={hasHydrated ? loadingProgress : 0} />;
     }
 
     if (!currentProject) {
-        return <LoadingScreen />;
+        return <LoadingScreen progress={loadingProgress} />;
     }
 
     const isPreviewMode = graphSettings.isPreviewMode;

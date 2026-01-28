@@ -7,9 +7,10 @@ import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
 
 interface LoadingScreenProps {
   message?: string;
+  progress?: number;
 }
 
-export function LoadingScreen({ message }: LoadingScreenProps) {
+export function LoadingScreen({ message, progress }: LoadingScreenProps) {
   return (
     <div className="flex h-screen items-center justify-center bg-zinc-950">
       <div className="flex flex-col items-center gap-4">
@@ -19,7 +20,14 @@ export function LoadingScreen({ message }: LoadingScreenProps) {
         </div>
         {message && <p className="text-sm text-zinc-400">{message}</p>}
         <div className="h-1 w-24 overflow-hidden rounded-full bg-zinc-800">
-          <div className="h-full w-1/2 animate-pulse rounded-full bg-white" />
+          {typeof progress === 'number' ? (
+            <div
+              className="h-full bg-white transition-all duration-300 ease-out"
+              style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+            />
+          ) : (
+            <div className="h-full w-1/2 animate-pulse rounded-full bg-white" />
+          )}
         </div>
       </div>
     </div>
@@ -38,7 +46,7 @@ export function LoadingSpinner({ size = 'md', className = '' }: LoadingSpinnerPr
     lg: 'h-10 w-10',
   };
 
-  return <NextImage src={NexusLogo} alt="Loading..."  className={`object-contain animate-spin ${sizeClasses[size]} ${className} `}  />;
+  return <NextImage src={NexusLogo} alt="Loading..." className={`object-contain animate-spin ${sizeClasses[size]} ${className} `} />;
 
 }
 

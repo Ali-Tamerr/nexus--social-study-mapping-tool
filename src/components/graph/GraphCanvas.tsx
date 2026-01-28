@@ -279,6 +279,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const wasGlobalDragRef = useRef(false);
   const isMarqueeSelectingRef = useRef(false);
   const marqueeStartScreenPosRef = useRef<{ x: number; y: number } | null>(null);
+  const lastPinchRef = useRef<{ dist: number; center: { x: number; y: number } } | null>(null);
 
   const handleNodeClick = useCallback(
     (nodeObj: { id?: string | number; x?: number; y?: number }, event: MouseEvent) => {
@@ -2025,6 +2026,20 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   }, [handleContainerMouseUpCapture]);
 
   const handleCanvasTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Start Pinch/Zoom
+      setIsDrawing(false);
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2));
+      const center = {
+        x: (t1.clientX + t2.clientX) / 2,
+        y: (t1.clientY + t2.clientY) / 2,
+      };
+      lastPinchRef.current = { dist, center };
+      return;
+    }
+
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
     const syntheticEvent = {
@@ -2038,6 +2053,55 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   }, [handleCanvasMouseDown]);
 
   const handleCanvasTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && lastPinchRef.current && graphRef.current) {
+      // Handle Pinch/Zoom
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const currDist = Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2));
+      const currCenter = {
+        x: (t1.clientX + t2.clientX) / 2,
+        y: (t1.clientY + t2.clientY) / 2,
+      };
+
+      const { dist: startDist, center: startCenter } = lastPinchRef.current;
+      const zoomFactor = currDist / startDist;
+
+      const currentZoom = graphRef.current.zoom();
+      const newZoom = currentZoom * zoomFactor;
+
+      // Calculate the world coordinate of the previous center
+      // const startWorld = graphRef.current.screen2GraphCoords(startCenter.x, startCenter.y); // This relies on old zoom
+
+      // Calculate new graph center to keep the pinch center fixed on screen
+      // Logic: pinchCenter should map to currCenter
+      // CenterAt sets the graph coordinate at the VIEWPORT center
+
+      // We need accurate screen-to-graph at the moment. 
+      // Instead of complex relative math, we can simply apply Zoom and Pan deltas.
+      // Zoom anchored to center, then Pan to correct offset.
+
+      const newGraphX = (graphRef.current.centerAt().x - (currCenter.x - getLastCenter().x) / currentZoom);
+      // Wait, complex logic inside hook might be unstable.
+      // Simple logic:
+      // 1. Zoom
+      graphRef.current.zoom(newZoom, 0);
+
+      // 2. Pan
+      // screen delta
+      const dx = currCenter.x - startCenter.x;
+      const dy = currCenter.y - startCenter.y;
+
+      // graph delta (approximate at new zoom level)
+      const graphDx = dx / newZoom;
+      const graphDy = dy / newZoom;
+
+      const center = graphRef.current.centerAt();
+      graphRef.current.centerAt(center.x - graphDx, center.y - graphDy, 0);
+
+      lastPinchRef.current = { dist: currDist, center: currCenter };
+      return;
+    }
+
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
     const syntheticEvent = {
@@ -2050,7 +2114,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     handleCanvasMouseMove(syntheticEvent);
   }, [handleCanvasMouseMove]);
 
+  // Helper to safely get last center without typescript complaints in closure
+  const getLastCenter = () => lastPinchRef.current?.center || { x: 0, y: 0 };
+
   const handleCanvasTouchEnd = useCallback((e: React.TouchEvent) => {
+    lastPinchRef.current = null;
     handleCanvasMouseUp();
   }, [handleCanvasMouseUp]);
 
@@ -2159,7 +2227,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               onZoom={handleZoom}
               onRenderFramePost={onRenderFramePost}
               enableNodeDrag={!graphSettings.lockAllMovement && !isDrawingTool}
-              enableZoomInteraction={false}
+              enableZoomInteraction={isSelectTool}
               enablePanInteraction={isPanTool}
               cooldownTicks={isPreviewMode ? 100 : 0}
               d3AlphaDecay={isPreviewMode ? 0.02 : 1}
@@ -2210,6 +2278,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           {isTextTool && (
             <div
               className="absolute inset-0 z-20 cursor-text"
+              onTouchStart={handleCanvasTouchStart}
+              onTouchMove={handleCanvasTouchMove}
+              onTouchEnd={handleCanvasTouchEnd}
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const screenX = e.clientX - rect.left;
@@ -2399,6 +2470,30 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               onStrokeStyleChange={(s) => setGraphSettings({ strokeStyle: s })}
               onFontSizeChange={(s) => setGraphSettings({ fontSize: s })}
               onFontFamilyChange={(f) => setGraphSettings({ fontFamily: f })}
+              onClose={() => setGraphSettings({ activeTool: 'select' })}
+              onDelete={async () => {
+                if (selectedShapeIds.size === 0 && !editingShapeId) {
+                  showToast("No shape selected", "error");
+                  return;
+                }
+
+                if (await showConfirmation("Are you sure you want to delete the selected item(s)?")) {
+                  if (selectedShapeIds.size > 0) {
+                    const ids = Array.from(selectedShapeIds);
+                    ids.forEach(id => {
+                      deleteShape(id);
+                      api.drawings.delete(id).catch(() => { });
+                    });
+                    setSelectedShapeIds(new Set());
+                  } else if (editingShapeId) {
+                    deleteShape(editingShapeId);
+                    api.drawings.delete(editingShapeId).catch(() => { });
+                    setEditingShapeId(null);
+                    setTextInputPos(null);
+                  }
+                  showToast("Deleted successfully", "success");
+                }
+              }}
             />
           </div>
         </>
