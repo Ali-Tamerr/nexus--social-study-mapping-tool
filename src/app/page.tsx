@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { useGraphStore } from '@/store/useGraphStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -39,6 +39,17 @@ export default function HomePage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+
+  const searchParams = useSearchParams();
+  const errorParam = searchParams.get('error');
+
+  useEffect(() => {
+    if (errorParam && window.opener) {
+      // We are in a popup that failed auth and redirected here
+      window.opener.postMessage({ type: 'NEXUS_AUTH_ERROR', error: errorParam }, window.location.origin);
+      try { window.close(); } catch (e) { }
+    }
+  }, [errorParam]);
 
   useEffect(() => {
     if (user?.id) {

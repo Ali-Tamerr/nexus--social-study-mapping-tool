@@ -13,9 +13,8 @@ export function WelcomeHero({ onSignup, onLogin }: { onSignup: () => void; onLog
       <h2 className="text-center text-3xl font-bold text-white">
         Welcome to <span className="font-ka1 text-white font-light">Nexus</span>
       </h2>
-      <p className="mt-3 max-w-md text-center text-zinc-400">
-        Build and explore interconnected knowledge graphs. Organize your thoughts,
-        ideas, and research in a visual, non-linear way.
+      <p className="mt-3 max-w-lg text-center text-zinc-400">
+       Think beyond the list. Build, link, and share interconnected graphs that turn fragmented data into a structured knowledge base. Visual, dynamic, and designed for deep exploration.
       </p>
       <div className="mt-8 flex gap-4">
         <button

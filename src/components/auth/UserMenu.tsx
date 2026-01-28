@@ -1,4 +1,5 @@
 'use client';
+import { signOut } from 'next-auth/react';
 
 import { useState, useRef, useEffect } from 'react';
 import { LogOut, Settings, User, ChevronDown, UserPen, Lock } from 'lucide-react';
@@ -108,9 +109,11 @@ export function UserMenu() {
 
           <div className="border-t border-zinc-800 pt-1">
             <button
-              onClick={() => {
+              onClick={async () => {
+                await signOut({ redirect: false });
                 logout();
                 setIsOpen(false);
+                window.location.reload();
               }}
               className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-zinc-800"
             >

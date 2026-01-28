@@ -28,7 +28,7 @@ export function Navbar({ showSearch = true, onSearchClick, children }: NavbarPro
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight text-white font-light font-ka1">Nexus</h1>
-            <p className="text-[10px] text-zinc-400">Knowledge Graph Explorer</p>
+            <p className="text-[10px] text-zinc-400">Social Study Mapping Tool</p>
           </div>
         </Link>
       </div>

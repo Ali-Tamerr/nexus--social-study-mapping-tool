@@ -2,6 +2,12 @@
 import NextAuth, { NextAuthConfig, User } from "next-auth"
 import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
+import { headers } from "next/headers";
+
+// Allow self-signed certificates for .NET backend in development
+if (process.env.NODE_ENV === 'development') {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
 
 // Helper to interact with backend
 async function backendRegister(user: any) {
@@ -28,13 +34,13 @@ async function backendRegister(user: any) {
     if (!res.ok) {
       if (res.status === 409) return null; // Already exists
       const text = await res.text();
-      // console.error('Backend registration failed:', text);
+      console.error('Backend registration failed:', text);
       return null;
     }
     
     return await res.json();
   } catch (error) {
-    // console.error('Backend registration error:', error);
+    console.error('Backend registration error:', error);
     return null;
   }
 }
@@ -51,11 +57,22 @@ async function backendLogin(credentials: any) {
       }),
     });
 
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (error) {
-    // console.error('Backend login error:', error);
-    return null;
+    if (!res.ok) {
+      const text = await res.text();
+      // Try to parse JSON error if possible
+      let errorMessage = text;
+      try {
+        const json = JSON.parse(text);
+        errorMessage = json.message || json.error_description || json.title || text;
+      } catch (e) {}
+      
+      console.error('Backend login failed:', res.status, errorMessage);
+      return { success: false, error: errorMessage };
+    }
+    return { success: true, user: await res.json() };
+  } catch (error: any) {
+    console.error('Backend login error:', error);
+    return { success: false, error: error.message || 'Connection error' };
   }
 }
 
@@ -75,9 +92,7 @@ async function getBackendProfile(email: string, provider?: string) {
 }
 
 // Allow self-signed certificates for .NET backend in development
-if (process.env.NODE_ENV === 'development') {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-}
+
 
 export const config = {
   providers: [
@@ -101,9 +116,10 @@ export const config = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
         
-        const user = await backendLogin(credentials);
+        const result = await backendLogin(credentials);
         
-        if (user) {
+        if (result.success && result.user) {
+          const user = result.user;
           return {
             id: user.id || user.Id,
             name: user.displayName || user.DisplayName,
@@ -112,6 +128,12 @@ export const config = {
             provider: 'email', 
           };
         }
+        
+        // Throw specific error message if available
+        if (result.error) {
+           throw new Error(result.error);
+        }
+        
         return null;
       }
     })
@@ -127,17 +149,32 @@ export const config = {
           let backendUser = await getBackendProfile(email, 'google');
 
           if (!backendUser) {
-            // Register user
-            backendUser = await backendRegister({
-              email,
-              name: user.name,
-              image: user.image,
-              provider: 'google'
-            });
+            // Check if user exists with ANY provider (e.g. they signed up with password before)
+            // We trust Google verified the email, so we can link/login to that account.
+            const existingAnyProvider = await getBackendProfile(email);
             
-            if (!backendUser) {
-               // console.error('Core Auth: Failed to register user in backend.');
-               return false; 
+            if (existingAnyProvider) {
+               console.log('Core Auth: Found existing user with different provider, logging in.');
+               backendUser = existingAnyProvider;
+            } else {
+              // Register user
+              backendUser = await backendRegister({
+                email,
+                name: user.name,
+                image: user.image,
+                provider: 'google'
+              });
+              
+              if (!backendUser) {
+                 // Double check if it failed because it exists (race condition or pure conflict)
+                 const retryUser = await getBackendProfile(email);
+                 if (retryUser) {
+                    backendUser = retryUser;
+                 } else {
+                    console.error('Core Auth: Failed to register user in backend.');
+                    return false; 
+                 }
+              }
             }
           }
           
@@ -145,7 +182,7 @@ export const config = {
           user.id = backendUser.id || backendUser.Id;
           return true;
         } catch (e) {
-            // console.error('Core Auth: Error in signIn callback', e);
+            console.error('Core Auth: Error in signIn callback', e);
             return false;
         }
       }

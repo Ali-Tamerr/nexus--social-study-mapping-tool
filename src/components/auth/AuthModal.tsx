@@ -20,7 +20,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   // Removed isGoogleLoading state as signIn handles it internally partially, but we can track if needed.
   // Actually signIn is async so we can use local loading state.
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +44,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
   };
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true);
+    setIsGoogleLoading(true);
     setError(null);
     try {
       // 1. Get the auth URL without redirecting the main page
@@ -69,20 +70,31 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
           `width=${width},height=${height},left=${left},top=${top}`
         );
 
-        // 3. Monitor popup
-        const interval = setInterval(async () => {
-          if (!popup || popup.closed) {
-            clearInterval(interval);
+        // 3. Monitor popup via postMessage
+        const handleMessage = (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return;
 
-            // Refresh page to update session state
+          if (event.data?.type === 'NEXUS_AUTH_SUCCESS') {
+            window.removeEventListener('message', handleMessage);
+            // popup will close itself
             window.location.reload();
+          } else if (event.data?.type === 'NEXUS_AUTH_ERROR') {
+            window.removeEventListener('message', handleMessage);
+            // popup will close itself
+            setError('Authentication failed: ' + (event.data.error || 'Unknown error'));
+            setIsGoogleLoading(false);
           }
-        }, 1000);
+        };
+        window.addEventListener('message', handleMessage);
+
+        // We rely on postMessage for success (from /auth/popup-close) or error (from /?error=...).
+        // We do NOT poll popup.closed to avoid COOP warnings.
+        // If the user manually closes the popup, they must click "Cancel" in the UI.
       }
 
     } catch (err: any) {
       setError('Google login failed: ' + (err.message || String(err)));
-      setIsLoading(false);
+      setIsGoogleLoading(false);
     }
   };
 
@@ -100,7 +112,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
       if (mode === 'signup') {
@@ -149,6 +161,14 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
           setError('An account with this email already exists. Please sign in instead.');
         } else if (err.message.includes('Failed to fetch')) {
           setError('Cannot connect to server. Please check if the backend is running.');
+        } else if (err.message.includes('CredentialsSignin')) {
+          if (mode === 'signup') {
+            // Registration likely succeeded, but auto-login failed.
+            setError('Account created successfully, but auto-login failed. Please sign in manually.');
+            setMode('login'); // Switch to login mode
+          } else {
+            setError('Invalid email or password');
+          }
         } else {
           setError(err.message);
         }
@@ -156,7 +176,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
         setError('Authentication failed');
       }
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -198,8 +218,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
           </h2>
           <p className="mt-2 text-sm text-zinc-400">
             {mode === 'login'
-              ? 'Sign in to access your knowledge graphs'
-              : 'Start building your knowledge graph today'}
+              ? 'Sign in to access your social study projects'
+              : 'Start building your social study projects today'}
           </p>
         </div>
 
@@ -270,10 +290,10 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isSubmitting || isGoogleLoading}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#355ea1] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#265fbd] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isLoading ? (
+            {isSubmitting ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
                 {mode === 'login' ? 'Signing in...' : 'Creating account...'}
@@ -292,8 +312,14 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
 
         <button
           type="button"
-          onClick={() => handleGoogleLogin()}
-          disabled={isLoading}
+          onClick={() => {
+            if (isGoogleLoading) {
+              setIsGoogleLoading(false);
+            } else {
+              handleGoogleLogin();
+            }
+          }}
+          disabled={isSubmitting}
           className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-700/80 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -314,7 +340,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
               fill="#EA4335"
             />
           </svg>
-          Continue with Google
+          {isGoogleLoading ? 'Connecting... (Click to Cancel)' : 'Continue with Google'}
         </button>
 
         <div className="mt-6 text-center">
@@ -322,7 +348,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
             {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
             <button
               onClick={switchMode}
-              className="font-medium text-[#355ea1] hover:text-violet-300"
+              className="font-medium text-[#355ea1] hover:text-[#6c9ff5]"
             >
               {mode === 'login' ? 'Sign up' : 'Sign in'}
             </button>
