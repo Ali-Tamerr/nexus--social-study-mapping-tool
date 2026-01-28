@@ -104,17 +104,8 @@ export default function HomePage() {
       addProject(newProject);
       toggleCreateProject(false);
     } catch (err) {
-      const demoProject: Project = {
-        id: Date.now() * -1,
-        name: data.name,
-        description: data.description,
-        color: data.color,
-        userId: user.id,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      addProject(demoProject);
-      toggleCreateProject(false);
+      console.error('Failed to create project:', err);
+      showToast(getFriendlyErrorMessage(err), 'error');
     } finally {
       setLoading(false);
     }

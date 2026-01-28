@@ -1,6 +1,10 @@
 import type { Project, Node, Link, Tag, Attachment, Profile, RegisterRequest, DrawnShape } from '@/types/knowledge';
 
-const RAW_API_URL = process.env.NEXT_PRIVATE_API_URL?.trim() || process.env.NEXT_PUBLIC_API_URL || '';
+const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PRIVATE_API_URL?.trim() || '';
+
+if (!RAW_API_URL && typeof window !== 'undefined') {
+  console.warn('API URL is not defined. Requests will be relative to the domain and may fail if not proxying.');
+}
 const API_BASE_URL = RAW_API_URL.endsWith('/') ? RAW_API_URL.slice(0, -1) : RAW_API_URL;
 
 

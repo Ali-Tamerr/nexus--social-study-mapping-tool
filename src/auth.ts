@@ -192,11 +192,20 @@ export const config = {
       if (user) {
         token.id = user.id;
         token.provider = account?.provider;
+        
+        // Double check for Google: validation to ensure we have the Backend ID
+        // This handles cases where the 'signIn' mutation might have been lost
+        if (account?.provider === 'google' && user.email) {
+           try {
+              const backendUser = await getBackendProfile(user.email, 'google');
+              if (backendUser && (backendUser.id || backendUser.Id)) {
+                  token.id = backendUser.id || backendUser.Id;
+              }
+           } catch (e) {
+              console.error("Auth: Failed to resolve backend ID in JWT", e);
+           }
+        }
       }
-      // If we signed in with Google, 'user' arg in jwt callback has the backend ID we set in signIn callback?
-      // Actually signIn callback runs BEFORE jwt callback. 
-      // In signIn callback we mutated 'user'. But does it persist to here?
-      // Yes, usually.
       return token;
     },
     async session({ session, token }) {
