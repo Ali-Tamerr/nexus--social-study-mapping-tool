@@ -215,6 +215,39 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const [hoveredLink, setHoveredLink] = useState<any | null>(null);
   const [isOutsideContent, setIsOutsideContent] = useState(false);
 
+  // Hoisted State
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
+  const [currentPoints, setCurrentPoints] = useState<{ x: number; y: number }[]>([]);
+  const [textInputPos, setTextInputPos] = useState<{ x: number; y: number; worldX: number; worldY: number } | null>(null);
+  const [textInputValue, setTextInputValue] = useState('');
+
+  const [selectedShapeIds, setSelectedShapeIds] = useState<Set<number>>(new Set());
+  const [isDraggingSelection, setIsDraggingSelection] = useState(false);
+  const [isHoveringShape, setIsHoveringShape] = useState(false);
+  const [isHoveringNode, setIsHoveringNode] = useState(false);
+  const [dragStartWorld, setDragStartWorld] = useState<{ x: number; y: number } | null>(null);
+  const [isMarqueeSelecting, setIsMarqueeSelecting] = useState(false);
+  const [marqueeStart, setMarqueeStart] = useState<{ x: number; y: number } | null>(null);
+  const [marqueeEnd, setMarqueeEnd] = useState<{ x: number; y: number } | null>(null);
+  const dragNodePrevRef = useRef<{ x: number; y: number } | null>(null);
+
+  const [isResizing, setIsResizing] = useState(false);
+  const activeResizeHandleRef = useRef<ResizeHandle | null>(null);
+  const resizeStartBoundsRef = useRef<ShapeBounds | null>(null);
+  const resizeDragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const resizingShapeIdRef = useRef<number | null>(null);
+  const originalShapeRef = useRef<DrawnShape | null>(null);
+  const [hoveredResizeHandle, setHoveredResizeHandle] = useState<ResizeHandle | null>(null);
+  const [resizeUpdateCounter, setResizeUpdateCounter] = useState(0);
+  const [editingShapeId, setEditingShapeId] = useState<number | null>(null);
+
+  const [isMiddleMousePanning, setIsMiddleMousePanning] = useState(false);
+  const middleMouseStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const [showSelectionPane, setShowSelectionPane] = useState(false);
+  const [isNodeDragging, setIsNodeDragging] = useState(false);
+
   const filteredNodes = useMemo(
     () => {
       let result = filterNodes(nodes, searchQuery);
@@ -619,6 +652,33 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   }, [graphSettings.strokeStyle]);
 
   useEffect(() => {
+    if (selectedShapeIds.size > 0) {
+      selectedShapeIds.forEach(id => {
+        updateShape(id, { fontSize: graphSettings.fontSize });
+        const s = shapes.find(sh => sh.id === id);
+        if (s && s.synced !== false) {
+          api.drawings.update(id, { fontSize: graphSettings.fontSize });
+        }
+      });
+    }
+  }, [graphSettings.fontSize]);
+
+  // Sync toolbar with selection
+  useEffect(() => {
+    if (selectedShapeIds.size === 1) {
+      const id = Array.from(selectedShapeIds)[0];
+      const s = shapes.find(sh => sh.id === id);
+      if (s) {
+        // We only update if value exists to avoid resetting to default if undefined
+        if (s.fontSize) setGraphSettings({ fontSize: s.fontSize });
+        if (s.color) setGraphSettings({ strokeColor: s.color });
+        if (s.width) setGraphSettings({ strokeWidth: s.width });
+        if (s.style) setGraphSettings({ strokeStyle: s.style });
+      }
+    }
+  }, [selectedShapeIds]);
+
+  useEffect(() => {
     const checkIfOutsideContent = () => {
       if (!graphRef.current) return;
 
@@ -701,36 +761,6 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     return () => clearInterval(interval);
   }, [graphData.nodes, shapes, dimensions]);
 
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
-  const [currentPoints, setCurrentPoints] = useState<{ x: number; y: number }[]>([]);
-  const [textInputPos, setTextInputPos] = useState<{ x: number; y: number; worldX: number; worldY: number } | null>(null);
-  const [textInputValue, setTextInputValue] = useState('');
-
-  const [selectedShapeIds, setSelectedShapeIds] = useState<Set<number>>(new Set());
-  const [isDraggingSelection, setIsDraggingSelection] = useState(false);
-  const [isHoveringShape, setIsHoveringShape] = useState(false);
-  const [isHoveringNode, setIsHoveringNode] = useState(false);
-  const [dragStartWorld, setDragStartWorld] = useState<{ x: number; y: number } | null>(null);
-  const [isMarqueeSelecting, setIsMarqueeSelecting] = useState(false);
-  const [marqueeStart, setMarqueeStart] = useState<{ x: number; y: number } | null>(null);
-  const [marqueeEnd, setMarqueeEnd] = useState<{ x: number; y: number } | null>(null);
-  const dragNodePrevRef = useRef<{ x: number; y: number } | null>(null);
-
-  const [isResizing, setIsResizing] = useState(false);
-  const activeResizeHandleRef = useRef<ResizeHandle | null>(null);
-  const resizeStartBoundsRef = useRef<ShapeBounds | null>(null);
-  const resizeDragStartRef = useRef<{ x: number; y: number } | null>(null);
-  const resizingShapeIdRef = useRef<number | null>(null);
-  const originalShapeRef = useRef<DrawnShape | null>(null);
-  const [hoveredResizeHandle, setHoveredResizeHandle] = useState<ResizeHandle | null>(null);
-  const [resizeUpdateCounter, setResizeUpdateCounter] = useState(0);
-  const [editingShapeId, setEditingShapeId] = useState<number | null>(null);
-
-  const [isMiddleMousePanning, setIsMiddleMousePanning] = useState(false);
-  const middleMouseStartRef = useRef<{ x: number; y: number } | null>(null);
-
-  const [showSelectionPane, setShowSelectionPane] = useState(false);
 
   const isDrawingTool = ['pen', 'rectangle', 'diamond', 'circle', 'arrow', 'line', 'eraser'].includes(graphSettings.activeTool);
   const isTextTool = graphSettings.activeTool === 'text';
@@ -801,49 +831,65 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     };
   }, [isResizing]);
 
-  const [isNodeDragging, setIsNodeDragging] = useState(false);
 
   useEffect(() => {
-    const isInteracting = isMarqueeSelecting || isDraggingSelection || isMiddleMousePanning || isNodeDragging || (activeResizeHandleRef.current !== null);
+    const isInteracting = isMarqueeSelecting || isDraggingSelection || isMiddleMousePanning || isNodeDragging || isResizing;
+
+    let timeoutId: NodeJS.Timeout;
+
     if (isInteracting) {
-      document.body.classList.add('graph-interacting');
+      // Delay hiding UI to prevent flickering on clicking/short actions
+      // Only hide if interaction lasts longer than 200ms (like drag or hold)
+      timeoutId = setTimeout(() => {
+        document.body.classList.add('graph-interacting');
+      }, 200);
     } else {
       document.body.classList.remove('graph-interacting');
     }
-  }, [isMarqueeSelecting, isDraggingSelection, isMiddleMousePanning, isNodeDragging]);
+
+    return () => clearTimeout(timeoutId);
+  }, [isMarqueeSelecting, isDraggingSelection, isMiddleMousePanning, isNodeDragging, isResizing]);
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
-      if (!containerRef.current?.contains(e.target as Node) || !graphRef.current) return;
-      if ((e.target as HTMLElement).closest('.graph-ui-hide') || (e.target as HTMLElement).closest('button')) return;
-
+      // Prevent browser zooming/scrolling
       e.preventDefault();
-      e.stopPropagation();
+      e.stopPropagation(); // Stop propagation to D3/ForceGraph
 
       if (e.ctrlKey || e.metaKey) {
+        // Zoom Logic (Pinch or Ctrl+Scroll)
         const zoomFactor = e.deltaY > 0 ? 0.88 : 1.12;
-        const currentZoom = graphRef.current.zoom() || 1;
+        const currentZoom = graphRef.current?.zoom() || 1;
         const newZoom = Math.max(0.1, Math.min(10, currentZoom * zoomFactor));
 
-        graphRef.current.zoom(newZoom, 0);
+        graphRef.current?.zoom(newZoom, 0);
       } else {
+        // Pan Logic (Trackpad Swipe / Mouse Wheel)
+        // User wants Swipe to Pan
         const scale = graphTransform.k || 1;
-        const panX = e.deltaX / scale;
+        const panX = e.deltaX / scale; // Adjust sensitivity if needed?
         const panY = e.deltaY / scale;
 
-        const currentCenter = graphRef.current.centerAt();
-        graphRef.current.centerAt(
-          currentCenter.x + panX,
-          currentCenter.y + panY,
-          0
-        );
+        const currentCenter = graphRef.current?.centerAt();
+        if (currentCenter) {
+          graphRef.current.centerAt(
+            currentCenter.x + panX,
+            currentCenter.y + panY,
+            0
+          );
+        }
       }
     };
 
-    window.addEventListener('wheel', handleWheel, { passive: false });
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    }
 
     return () => {
-      window.removeEventListener('wheel', handleWheel);
+      if (container) {
+        container.removeEventListener('wheel', handleWheel, { capture: true });
+      }
     };
   }, [graphTransform.k]);
 
@@ -1075,6 +1121,14 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   // selectedShapeIdsRef is already defined above
   const graphDataRef = useRef(graphData);
   graphDataRef.current = graphData; // Update immediately in render body
+
+  /* Sync Refs for Render Loop */
+  const editingShapeIdRef = useRef(editingShapeId);
+  editingShapeIdRef.current = editingShapeId;
+
+  // Ensure shapesRef is up to date for the render loop
+
+  shapesRef.current = shapes;
 
   /* Manual Group Drag Refs */
   const hoveredNode = useGraphStore(s => s.hoveredNode);
@@ -1845,8 +1899,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
   const onRenderFramePost = useCallback((ctx: CanvasRenderingContext2D, globalScale: number) => {
     const renderShapes = shapesRef.current;
+
+    // Use value from ref to ensure we don't draw the shape being edited (avoids duplication)
+    const currentEditingId = editingShapeIdRef.current;
+
     renderShapes.forEach(shape => {
-      if (shape.id === editingShapeId) return;
+      // Skip the shape currently being edited (it's shown in the textarea)
+      if (shape.id === currentEditingId) return;
       drawShapeOnContext(ctx, shape, globalScale);
       if (selectedShapeIds.has(shape.id)) {
         drawSelectionBox(ctx, shape, globalScale);
@@ -1879,6 +1938,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   }, [filteredShapes, isDrawing, currentPoints, graphSettings.activeTool, graphSettings.strokeColor, graphSettings.strokeWidth, graphSettings.strokeStyle, selectedShapeIds, isMarqueeSelecting, marqueeStart, marqueeEnd, isResizing, resizeUpdateCounter, drawPreview, currentProject?.id, shapeToApiDrawing, addShape, editingShapeId]);
 
   const handleSelectMouseDown = useCallback((e: React.MouseEvent) => {
+    if (useGraphStore.getState().isConnectionPickerActive) return;
     if (!isSelectTool) return;
     if (isHoveringNode) return;
 
@@ -2211,13 +2271,22 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 ctx.fillStyle = '#a1a1aa';
                 ctx.fillText(link.description, midX, midY);
               }}
-              onNodeClick={handleNodeClick}
+              onNodeClick={(node: any, event: any) => {
+                const state = useGraphStore.getState();
+                if (state.isConnectionPickerActive) {
+                  state.setConnectionPickerResult(Number(node.id));
+                  state.setConnectionPickerActive(false);
+                  return;
+                }
+                handleNodeClick(node, event);
+              }}
               onNodeHover={handleNodeHover}
               onNodeDrag={handleNodeDrag}
               onNodeDragEnd={handleNodeDragEnd}
               onLinkClick={handleLinkClick}
               onLinkHover={handleLinkHover}
               onBackgroundClick={() => {
+                if (useGraphStore.getState().isConnectionPickerActive) return;
                 const timeSinceNodeClick = Date.now() - lastNodeClickTimeRef.current;
                 if (timeSinceNodeClick < 300) {
                   return;
@@ -2318,74 +2387,30 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               className="fixed z-50"
               style={{ left: textInputPos.x, top: textInputPos.y }}
             >
-              <input
+              <textarea
                 autoFocus
-                type="text"
                 value={textInputValue}
-                onChange={(e) => setTextInputValue(e.target.value)}
+                onChange={(e) => {
+                  setTextInputValue(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = e.target.scrollHeight + 'px';
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && textInputValue.trim()) {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    // Allow Shift+Enter for newline, Enter to save (standard behavior)
+                    // override: User asked for "insert multiple lines", usually Enter = newline.
+                    // Let's make Enter = Newline, Ctrl+Enter = Save.
+                  }
+
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                     e.preventDefault();
-
-                    if (editingShapeId) {
-                      updateShape(editingShapeId, { text: textInputValue.trim() });
-                      api.drawings.update(editingShapeId, { text: textInputValue.trim() })
-                        .catch(() => { });
-                    } else {
-                      const newShape: DrawnShape = {
-                        id: Date.now() * -1,
-                        projectId: currentProject?.id || 0,
-                        type: 'text',
-                        points: [{ x: textInputPos.worldX, y: textInputPos.worldY }],
-                        color: graphSettings.strokeColor,
-                        width: 0,
-                        style: 'solid',
-                        text: textInputValue.trim(),
-                        fontSize: graphSettings.fontSize || 16,
-                        fontFamily: graphSettings.fontFamily || 'Inter',
-                        groupId: activeGroupId ?? undefined,
-                        synced: false,
-                      };
-                      addShape(newShape);
-                      if (currentProject?.id) {
-                        const saveText = async () => {
-                          let groupId = activeGroupId;
-                          if (!groupId || groupId === 0) {
-                            try {
-                              const groups = await api.groups.getAll();
-                              if (groups && groups.length > 0) groupId = groups[0].id;
-                              else {
-                                const newGroup = await api.groups.create({ name: 'Default', color: '#808080', order: 0 });
-                                if (newGroup) groupId = newGroup.id;
-                              }
-                            } catch (e) { }
-                          }
-                          return api.drawings.create(shapeToApiDrawing(newShape, currentProject.id, groupId ?? undefined));
-                        };
-
-                        saveText()
-                          .then(createdDrawing => {
-                            updateShape(newShape.id, { id: createdDrawing.id });
-                          })
-                          .catch(() => { });
-                      }
-                    }
-
-                    setTextInputPos(null);
-                    setTextInputValue('');
-                    setEditingShapeId(null);
-                    setTimeout(() => {
-                      if (graphRef.current) {
-                        const z = graphRef.current.zoom();
-                        graphRef.current.zoom(z * 1.00001, 0);
-                        graphRef.current.zoom(z, 0);
-                      }
-                    }, 50);
+                    e.currentTarget.blur(); // Trigger save via onBlur
                   } else if (e.key === 'Escape') {
                     setTextInputPos(null);
                     setTextInputValue('');
                     setEditingShapeId(null);
                   }
+                  e.stopPropagation();
                 }}
                 onBlur={() => {
                   if (textInputValue.trim()) {
@@ -2446,7 +2471,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     }
                   }, 50);
                 }}
-                className="bg-transparent border-none outline-none text-white min-w-[100px] p-0 m-0"
+                className="bg-transparent border-none outline-none text-white min-w-[100px] p-0 resize-none overflow-hidden"
                 style={{
                   fontSize: ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)),
                   fontFamily: editingShape?.fontFamily || graphSettings.fontFamily || 'Inter',
@@ -2460,6 +2485,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           <div className="graph-ui-hide" onMouseDown={(e) => e.stopPropagation()}>
             <DrawingProperties
               activeTool={graphSettings.activeTool}
+              selectedShapeType={selectedShapeIds.size === 1 ? shapes.find(s => s.id === Array.from(selectedShapeIds)[0])?.type : undefined}
               strokeWidth={graphSettings.strokeWidth}
               strokeColor={graphSettings.strokeColor}
               strokeStyle={graphSettings.strokeStyle}

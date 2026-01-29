@@ -264,16 +264,18 @@ export default function EditorPage() {
 
     return (
         <div className="flex h-screen flex-col overflow-hidden bg-zinc-950">
-            <ProjectNavbar
-                projectName={currentProject?.name}
-                projectColor={currentProject?.color}
-                nodeCount={filteredNodes.length}
-                onExportPNG={handleExportPNG}
-                onExportJPG={handleExportJPG}
-                onAddNode={!isPreviewMode ? handleCreateNode : undefined}
-                isAddingNode={isLoading}
-                isPreviewMode={isPreviewMode}
-            />
+            {!isPreviewMode && (
+                <ProjectNavbar
+                    projectName={currentProject?.name}
+                    projectColor={currentProject?.color}
+                    nodeCount={filteredNodes.length}
+                    onExportPNG={handleExportPNG}
+                    onExportJPG={handleExportJPG}
+                    onAddNode={!isPreviewMode ? handleCreateNode : undefined}
+                    isAddingNode={isLoading}
+                    isPreviewMode={isPreviewMode}
+                />
+            )}
 
             {error && (
                 <div className="border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-400">

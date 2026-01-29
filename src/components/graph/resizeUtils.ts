@@ -19,13 +19,17 @@ export function getShapeBounds(shape: DrawnShape, globalScale: number = 1): Shap
 
   if (shape.type === 'text' && shape.text) {
     const fontSize = shape.fontSize || 16;
-    let textWidth = shape.text.length * fontSize * 0.6; // Fallback
-    const textHeight = fontSize * 1.2;
+    const lines = shape.text.split('\n');
+    const lineHeight = fontSize * 1.2;
+    let textWidth = 0;
+    const totalHeight = lines.length * lineHeight;
 
     if (tempCtx) {
         tempCtx.font = `${fontSize}px ${shape.fontFamily || 'Inter'}, sans-serif`;
-        const metrics = tempCtx.measureText(shape.text);
-        textWidth = metrics.width;
+        textWidth = Math.max(...lines.map(line => tempCtx.measureText(line).width));
+    } else {
+        // Fallback
+        textWidth = Math.max(...lines.map(line => line.length)) * fontSize * 0.6;
     }
     
     const angle = shape.points.length >= 2 
@@ -41,8 +45,8 @@ export function getShapeBounds(shape: DrawnShape, globalScale: number = 1): Shap
     const wx = textWidth * cos;
     const wy = textWidth * sin;
     // Height vector (rotated 90 degrees clockwise)
-    const hx = -textHeight * sin;
-    const hy = textHeight * cos;
+    const hx = -totalHeight * sin;
+    const hy = totalHeight * cos;
 
     // Calculate 4 corners
     const x1 = p0.x;

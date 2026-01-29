@@ -19,6 +19,7 @@ interface DrawingPropertiesProps {
     onFontFamilyChange: (family: string) => void;
     onClose?: () => void;
     onDelete?: () => void;
+    selectedShapeType?: string;
 }
 
 const widths = [1, 2, 3, 5, 8];
@@ -28,10 +29,10 @@ const fonts = [
     { id: 'Georgia', label: 'Georgia' },
 ];
 
-const isDrawingTool = (tool: DrawingTool) =>
+const isDrawingTool = (tool: string) =>
     ['pen', 'rectangle', 'diamond', 'circle', 'arrow', 'line'].includes(tool);
 
-const isTextTool = (tool: DrawingTool) => tool === 'text';
+const isTextTool = (tool: string) => tool === 'text';
 
 export function DrawingProperties({
     activeTool,
@@ -47,9 +48,10 @@ export function DrawingProperties({
     onFontFamilyChange,
     onClose,
     onDelete,
+    selectedShapeType,
 }: DrawingPropertiesProps) {
-    const showDrawingProps = isDrawingTool(activeTool);
-    const showTextProps = isTextTool(activeTool);
+    const showDrawingProps = isDrawingTool(activeTool) || (activeTool === 'select' && !!selectedShapeType && isDrawingTool(selectedShapeType));
+    const showTextProps = isTextTool(activeTool) || (activeTool === 'select' && selectedShapeType === 'text');
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [showLeftShadow, setShowLeftShadow] = useState(false);

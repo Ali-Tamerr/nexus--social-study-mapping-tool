@@ -158,16 +158,22 @@ export function drawShapeOnContext(
                 ctx.fillStyle = shape.color;
                 ctx.textBaseline = 'top';
                 ctx.textAlign = 'left';
+                const lineHeight = fontSize * 1.2;
+                const lines = shape.text.split('\n');
                 
                 if (points.length >= 2) {
                     const angle = Math.atan2(points[1].y - points[0].y, points[1].x - points[0].x);
                     ctx.save();
                     ctx.translate(points[0].x, points[0].y);
                     ctx.rotate(angle);
-                    ctx.fillText(shape.text, 0, 0);
+                    lines.forEach((line, index) => {
+                        ctx.fillText(line, 0, index * lineHeight);
+                    });
                     ctx.restore();
                 } else {
-                    ctx.fillText(shape.text, points[0].x, points[0].y);
+                    lines.forEach((line, index) => {
+                        ctx.fillText(line, points[0].x, points[0].y + index * lineHeight);
+                    });
                 }
             }
             break;

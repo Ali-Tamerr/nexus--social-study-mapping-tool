@@ -26,6 +26,7 @@ export function NodeEditor() {
   const addLink = useGraphStore((s) => s.addLink);
   const updateLink = useGraphStore((s) => s.updateLink);
   const deleteLink = useGraphStore((s) => s.deleteLink);
+  const setSearchQuery = useGraphStore((s) => s.setSearchQuery);
 
   const isConnectionPickerActive = useGraphStore(s => s.isConnectionPickerActive);
   const setConnectionPickerActive = useGraphStore(s => s.setConnectionPickerActive);
@@ -144,7 +145,8 @@ export function NodeEditor() {
       // Update original color so close doesn't revert the saved color
       originalColorRef.current = customColor;
 
-      showToast('Node saved successfully', 'success');
+      setSearchQuery(''); // Clear search to ensure node remains visible (renaming might break search match)
+      showToast('Node saved successfully', );
       toggleEditor(false);
     } catch (err) {
       // console.error('Failed to save node:', err);
@@ -896,7 +898,7 @@ export function NodeEditor() {
         </div>
       </div>
 
-      {isDirty && !showUnsavedPopup && (
+      {isDirty && !showUnsavedPopup && !isConnectionPickerActive && (
         <div
           className="fixed inset-0 z-40 cursor-pointer"
           onClick={() => setShowUnsavedPopup(true)}
