@@ -18,6 +18,7 @@ interface GroupsTabsProps {
     onRenameGroup: (groupId: number, newName: string) => void;
     onDeleteGroup: (groupId: number) => void;
     onReorderGroups: (groups: Group[]) => void;
+    isPreviewMode?: boolean;
 }
 
 const DEFAULT_COLORS = [
@@ -33,6 +34,7 @@ export function GroupsTabs({
     onRenameGroup,
     onDeleteGroup,
     onReorderGroups,
+    isPreviewMode = false,
 }: GroupsTabsProps) {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editValue, setEditValue] = useState('');
@@ -192,7 +194,7 @@ export function GroupsTabs({
 
     return (
 
-        <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 right-16 sm:right-44 flex items-center gap-1.5 sm:gap-0 pointer-events-none">
+        <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 right-16 sm:right-44 flex items-center gap-1.5 sm:gap-0 pointer-events-none z-30">
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pointer-events-auto pr-1" onWheel={(e) => {
                 // Determine if we are at the ends of the scroll
                 const element = e.currentTarget;
@@ -215,7 +217,7 @@ export function GroupsTabs({
                             if (el) itemsRef.current.set(group.id, el);
                             else itemsRef.current.delete(group.id);
                         }}
-                        draggable={editingId !== group.id}
+                        draggable={!isPreviewMode && editingId !== group.id}
                         onDragStart={(e) => handleDragStart(e, group.id)}
                         onDragOver={(e) => handleDragOver(e, group.id)}
                         onDragEnd={handleDragEnd}
@@ -227,9 +229,9 @@ export function GroupsTabs({
                             : 'bg-zinc-800/60 border-zinc-700/50 text-zinc-400 hover:bg-zinc-700/60 hover:text-zinc-300'
                             } ${draggedId === group.id && isTouchDraggingRef.current ? 'scale-110 shadow-xl z-50 ring-2 ring-blue-500/50' : ''} ${dragOverId === group.id ? 'border-blue-500' : ''}`}
                         onClick={() => !editingId && onSelectGroup(group.id)}
-                        onDoubleClick={() => handleStartEdit(group)}
+                        onDoubleClick={() => !isPreviewMode && handleStartEdit(group)}
                     >
-                        {sortedGroups.length > 1 && (
+                        {!isPreviewMode && sortedGroups.length > 1 && (
                             <GripVertical className="w-3 h-3 opacity-0 group-hover:opacity-50 cursor-grab" />
                         )}
 
@@ -254,7 +256,7 @@ export function GroupsTabs({
                             <span className="truncate max-w-24">{group.name}</span>
                         )}
 
-                        {sortedGroups.length > 1 && (
+                        {!isPreviewMode && sortedGroups.length > 1 && (
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -270,13 +272,15 @@ export function GroupsTabs({
                 ))}
             </div>
 
-            <button
-                onClick={onAddGroup}
-                className="flex-none h-9 flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs bg-zinc-800/80 backdrop-blur-sm border border-dashed border-zinc-700 text-zinc-500 hover:bg-zinc-700/80 hover:text-zinc-300 hover:border-zinc-600 transition-all pointer-events-auto shadow-sm"
-                title="Add new group"
-            >
-                <Plus className="w-3 h-3" />
-            </button>
+            {!isPreviewMode && (
+                <button
+                    onClick={onAddGroup}
+                    className="flex-none h-9 flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs bg-zinc-800/80 backdrop-blur-sm border border-dashed border-zinc-700 text-zinc-500 hover:bg-zinc-700/80 hover:text-zinc-300 hover:border-zinc-600 transition-all pointer-events-auto shadow-sm"
+                    title="Add new group"
+                >
+                    <Plus className="w-3 h-3" />
+                </button>
+            )}
         </div>
     );
 }

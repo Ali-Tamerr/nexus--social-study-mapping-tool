@@ -46,6 +46,7 @@ export function PreviewNavbar({
     const [isSaveAsMenuOpen, setIsSaveAsMenuOpen] = useState(false);
     const [showDescription, setShowDescription] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+    const descriptionRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -53,8 +54,10 @@ export function PreviewNavbar({
                 setIsMenuOpen(false);
                 setIsSaveAsMenuOpen(false);
             }
+            if (descriptionRef.current && !descriptionRef.current.contains(event.target as any)) {
+                setShowDescription(false);
+            }
         }
-        // Capture phase to ensure we catch clicks even if propagation is stopped (e.g. by Canvas)
         document.addEventListener('mousedown', handleClickOutside, true);
         return () => document.removeEventListener('mousedown', handleClickOutside, true);
     }, []);
@@ -160,7 +163,7 @@ export function PreviewNavbar({
                 <div className="h-6 w-px bg-zinc-800/50" />
 
                 <div className='flex items-center gap-3'>
-                    <div className="relative">
+                    <div className="relative" ref={descriptionRef}>
                         <button
                             onClick={() => setShowDescription(!showDescription)}
                             className={`flex items-center justify-center rounded-md p-1 transition-colors ${showDescription ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
@@ -168,9 +171,9 @@ export function PreviewNavbar({
                         >
                             <Info className="h-5 w-5" />
                         </button>
-                        {showDescription && projectDescription && (
-                            <div className="absolute top-full left-0 mt-2 w-72 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-md p-4 text-sm text-zinc-300 shadow-2xl z-50 whitespace-pre-wrap animate-in fade-in zoom-in-95 duration-200">
-                                {projectDescription}
+                        {showDescription && (
+                            <div className="absolute top-full left-0 mt-2 w-72 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-md p-4 text-sm text-zinc-300 shadow-2xl z-[101] whitespace-pre-wrap animate-in fade-in zoom-in-95 duration-200">
+                                {projectDescription || <span className="text-zinc-500 italic">No description</span>}
                             </div>
                         )}
                     </div>
