@@ -1008,9 +1008,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   }, [filteredShapes]);
 
   // Also sync during render if not dragging/resizing (for immediate updates)
-  if (!dragNodePrevRef.current && !isResizing) {
+  // DISABLED: This overwrites manual mutations in handleKeyDown before state catches up, causing lag.
+  // We rely on useEffect below to sync when state actually changes.
+  /* if (!dragNodePrevRef.current && !isResizing) {
     shapesRef.current = filteredShapes;
-  }
+  } */
   selectedShapeIdsRef.current = selectedShapeIds;
   selectedNodeIdsRefForDelete.current = selectedNodeIds;
 
@@ -1257,8 +1259,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   editingShapeIdRef.current = editingShapeId;
 
   // Ensure shapesRef is up to date for the render loop
-
-  shapesRef.current = shapes;
+  // DISABLED: Overwrites manual mutations before state syncs
+  // shapesRef.current = shapes;
 
   /* Manual Group Drag Refs */
   const hoveredNode = useGraphStore(s => s.hoveredNode);
@@ -2154,7 +2156,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     const resizingId = resizingShapeIdRef.current;
     const resizingShape = currentResizingShapeRef.current;
 
-    filteredShapes.forEach(shape => {
+    const shapesToRender = shapesRef.current;
+
+    shapesToRender.forEach(shape => {
+      if (activeGroupId !== null && activeGroupId !== undefined && shape.groupId !== activeGroupId) return;
+
       if (shape.id === currentEditingId) return;
       if (isResizing && shape.id === resizingId) return;
 
