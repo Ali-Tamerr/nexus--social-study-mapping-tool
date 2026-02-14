@@ -16,6 +16,7 @@ import { LoadingScreen, LoadingOverlay } from '@/components/ui';
 import { Navbar, AuthNav } from '@/components/layout';
 import { ProjectGrid, ProjectsToolbar, CreateProjectModal, EditProjectModal } from '@/components/projects';
 import { CreateGroupModal } from '@/components/projects/CreateGroupModal';
+import { DeleteGroupModal } from '@/components/projects/DeleteGroupModal';
 import { GroupList } from '@/components/projects/GroupList';
 import { WelcomeHero } from '@/components/home/WelcomeHero';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -62,6 +63,7 @@ export default function HomePage() {
     collections,
     fetchCollections,
     createCollection,
+    updateCollection,
     deleteCollection,
     isLoading: isGroupsLoading,
   } = useProjectCollectionStore();
@@ -78,8 +80,6 @@ export default function HomePage() {
 
   // Group Features State
   const [activeTab, setActiveTab] = useState<'all' | 'groups'>('all');
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
 
   useEffect(() => {
@@ -191,18 +191,9 @@ export default function HomePage() {
     }
   };
 
-  // Group Handlers
-  const handleToggleSelect = (project: Project) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(project.id)) {
-      newSelected.delete(project.id);
-    } else {
-      newSelected.add(project.id);
-    }
-    setSelectedIds(newSelected);
-  };
 
-  const handleCreateGroup = async (data: { name: string; description?: string }) => {
+
+  const handleCreateGroup = async (data: { name: string; description?: string; projectIds: number[] }) => {
     if (!user?.id) return;
 
     try {
@@ -210,11 +201,9 @@ export default function HomePage() {
         name: data.name,
         description: data.description,
         userId: user.id,
-        projectIds: Array.from(selectedIds)
+        projectIds: data.projectIds
       });
       setIsCreateGroupOpen(false);
-      setSelectionMode(false);
-      setSelectedIds(new Set());
       setActiveTab('groups');
       showToast('Group created successfully');
     } catch (err) {
@@ -222,12 +211,54 @@ export default function HomePage() {
     }
   };
 
-  const handleDeleteGroup = async (id: number) => {
-    if (!await showConfirmation('Are you sure you want to delete this group?')) return;
+  const [editingGroup, setEditingGroup] = useState<typeof collections[0] | null>(null);
+
+  const handleEditGroupClick = (group: typeof collections[0]) => {
+    setEditingGroup(group);
+  };
+
+  const handleUpdateGroup = async (data: { name: string; description?: string; projectIds: number[] }) => {
+    if (!editingGroup || !user?.id) return;
+
     try {
-      await deleteCollection(id);
-      showToast('Group deleted');
+      await updateCollection(editingGroup.id, {
+        name: data.name,
+        description: data.description,
+        projectIds: data.projectIds
+      });
+      setEditingGroup(null);
+      showToast('Group updated successfully');
     } catch (err) {
+      showToast(getFriendlyErrorMessage(err), 'error');
+    }
+  };
+
+  const [groupToDelete, setGroupToDelete] = useState<typeof collections[0] | null>(null);
+
+  const handleDeleteGroupClick = (group: typeof collections[0]) => {
+    setGroupToDelete(group);
+  };
+
+  const handleConfirmDeleteGroup = async (withProjects: boolean) => {
+    if (!groupToDelete || !user?.id) return;
+
+    try {
+      if (withProjects && groupToDelete.items) {
+        // Delete all projects in the group first
+        const projectIds1 = groupToDelete.items.map(item => item.projectId);
+        // If items are returned, use them. If not, use getById to be sure? 
+        // Assuming items are populated in the list view for now.
+        await Promise.all(projectIds1.map(pid => api.projects.delete(pid)));
+
+        // Optimistically update local project list
+        projectIds1.forEach(pid => deleteProject(pid));
+      }
+
+      await deleteCollection(groupToDelete.id);
+      setGroupToDelete(null);
+      showToast('Group deleted successfully');
+    } catch (err) {
+      console.error('Failed to delete group:', err);
       showToast('Failed to delete group', 'error');
     }
   };
@@ -278,12 +309,9 @@ export default function HomePage() {
               onCreateProject={() => toggleCreateProject(true)}
               activeTab={activeTab}
               onTabChange={setActiveTab}
-              selectionMode={selectionMode}
-              onSelectionModeChange={(enabled) => {
-                setSelectionMode(enabled);
-                if (!enabled) setSelectedIds(new Set());
-              }}
-              selectedCount={selectedIds.size}
+              selectionMode={false}
+              onSelectionModeChange={() => { }}
+              selectedCount={0}
               onCreateGroup={() => setIsCreateGroupOpen(true)}
             />
 
@@ -298,14 +326,12 @@ export default function HomePage() {
                     onProjectClick={handleOpenProject}
                     onProjectEdit={handleEditProjectClick}
                     onProjectDelete={handleDeleteProject}
-                    selectable={selectionMode}
-                    selectedIds={selectedIds}
-                    onToggleSelect={handleToggleSelect}
                   />
                 ) : (
                   <GroupList
                     groups={filteredGroups}
-                    onDelete={handleDeleteGroup}
+                    onDelete={handleDeleteGroupClick}
+                    onEdit={handleEditGroupClick}
                   />
                 )}
               </>
@@ -326,8 +352,33 @@ export default function HomePage() {
         onClose={() => setIsCreateGroupOpen(false)}
         onSubmit={handleCreateGroup}
         loading={isGroupsLoading}
+        availableProjects={projects}
       />
 
+      {groupToDelete && (
+        <DeleteGroupModal
+          group={groupToDelete}
+          isOpen={true}
+          onClose={() => setGroupToDelete(null)}
+          onDelete={handleConfirmDeleteGroup}
+          loading={isGroupsLoading}
+        />
+      )}
+
+      {editingGroup && (
+        <CreateGroupModal
+          isOpen={true}
+          onClose={() => setEditingGroup(null)}
+          onSubmit={handleUpdateGroup}
+          loading={isGroupsLoading}
+          availableProjects={projects}
+          initialData={{
+            name: editingGroup.name,
+            description: editingGroup.description,
+            projectIds: editingGroup.items?.map(i => i.projectId) || []
+          }}
+        />
+      )}
       {editingProject && (
         <EditProjectModal
           isOpen={true}

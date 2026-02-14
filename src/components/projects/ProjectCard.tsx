@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronRight, FolderOpen, Loader2, Trash2, Pencil } from 'lucide-react';
+import { ChevronRight, FolderOpen, Loader2, Trash2, Pencil, Info } from 'lucide-react';
 
 import { Project } from '@/types/knowledge';
 
@@ -10,6 +10,7 @@ interface ProjectCardProps {
   onClick: (project: Project) => void;
   onDelete?: (project: Project) => void;
   onEdit?: (project: Project) => void;
+  onInfoClick?: (project: Project) => void;
   viewMode?: 'grid' | 'list';
   selectable?: boolean;
   isSelected?: boolean;
@@ -21,6 +22,7 @@ export function ProjectCard({
   onClick,
   onDelete,
   onEdit,
+  onInfoClick,
   viewMode = 'grid',
   selectable = false,
   isSelected = false,
@@ -104,26 +106,46 @@ export function ProjectCard({
 
         <div className={`flex max-sm:self-start items-center gap-3 text-xs text-zinc-500 ${!isListView ? 'sm:mt-4' : ''}`}>
           <span className="text-zinc-600">
-            {new Date(project.updatedAt).toLocaleDateString()}
+            {project.updatedAt && !isNaN(new Date(project.updatedAt).getTime())
+              ? new Date(project.updatedAt).toLocaleDateString()
+              : ''}
           </span>
-          <button
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-blue-400 transition-colors"
-            title="Edit project"
-            onClick={handleEdit}
-            tabIndex={-1}
-            type="button"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
-          <button
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-red-500 transition-colors"
-            title="Delete project"
-            onClick={handleDelete}
-            tabIndex={-1}
-            type="button"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {onInfoClick && (
+            <button
+              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+              title="View Info"
+              onClick={(e) => {
+                e.stopPropagation();
+                onInfoClick(project);
+              }}
+              tabIndex={-1}
+              type="button"
+            >
+              <Info className="w-4 h-4" />
+            </button>
+          )}
+          {onEdit && (
+            <button
+              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-blue-400 transition-colors"
+              title="Edit project"
+              onClick={handleEdit}
+              tabIndex={-1}
+              type="button"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-red-500 transition-colors"
+              title="Delete project"
+              onClick={handleDelete}
+              tabIndex={-1}
+              type="button"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </div>

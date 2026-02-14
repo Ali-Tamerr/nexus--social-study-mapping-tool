@@ -65,43 +65,6 @@ export function ProjectsToolbar({
       {/* Right Side: Actions */}
       <div className="flex items-center justify-between gap-3 sm:justify-end">
         {activeTab === 'all' && (
-          <>
-            {selectionMode ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-zinc-400 hidden sm:inline">{selectedCount} selected</span>
-                <Button
-                  variant="secondary"
-                  onClick={() => onSelectionModeChange(false)}
-                  className="h-9 px-3"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="brand"
-                  onClick={onCreateGroup}
-                  disabled={selectedCount === 0}
-                  className="h-9 px-3"
-                >
-                  Create Group
-                </Button>
-              </div>
-            ) : (
-              <Button
-                variant="secondary"
-                onClick={() => onSelectionModeChange(true)}
-                className="h-9 px-3"
-              >
-                Select
-              </Button>
-            )}
-          </>
-        )}
-
-        <div className="hidden sm:block">
-          <ViewModeToggle viewMode={viewMode} onChange={onViewModeChange} />
-        </div>
-
-        {activeTab === 'all' && !selectionMode && (
           <Button
             variant="brand"
             onClick={onCreateProject}
@@ -111,6 +74,21 @@ export function ProjectsToolbar({
             New project
           </Button>
         )}
+
+        {activeTab === 'groups' && (
+          <Button
+            variant="brand"
+            onClick={onCreateGroup}
+            icon={<Plus className="h-4 w-4" />}
+            className="w-full sm:w-auto justify-center h-9"
+          >
+            New group
+          </Button>
+        )}
+
+        <div className="hidden sm:block">
+          <ViewModeToggle viewMode={viewMode} onChange={onViewModeChange} />
+        </div>
       </div>
     </div>
   );

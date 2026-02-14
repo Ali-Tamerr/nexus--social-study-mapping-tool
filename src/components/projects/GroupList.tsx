@@ -1,17 +1,18 @@
 'use client';
 
 import { ProjectCollection } from '@/types/knowledge';
-import { Folder, MoreVertical, Trash2, ExternalLink, Share2, Loader2 } from 'lucide-react';
+import { Folder, MoreVertical, Trash2, ExternalLink, Share2, Loader2, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
 import { ShareModal } from '@/components/ui/ShareModal';
 
 interface GroupListProps {
     groups: ProjectCollection[];
-    onDelete: (id: number) => void;
+    onDelete: (group: ProjectCollection) => void;
+    onEdit: (group: ProjectCollection) => void;
 }
 
-export function GroupList({ groups, onDelete }: GroupListProps) {
+export function GroupList({ groups, onDelete, onEdit }: GroupListProps) {
     const [shareUrl, setShareUrl] = useState<string | null>(null);
 
     if (groups.length === 0) {
@@ -58,7 +59,14 @@ export function GroupList({ groups, onDelete }: GroupListProps) {
                                     <Share2 className="h-4 w-4" />
                                 </button>
                                 <button
-                                    onClick={() => onDelete(group.id)}
+                                    onClick={() => onEdit(group)}
+                                    className="rounded p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-white transition-colors"
+                                    title="Edit Group"
+                                >
+                                    <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                    onClick={() => onDelete(group)}
                                     className="rounded p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-red-500 transition-colors"
                                     title="Delete Group"
                                 >
