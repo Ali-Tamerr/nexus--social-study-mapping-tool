@@ -48,50 +48,25 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
     setIsGoogleLoading(true);
     setError(null);
     try {
-      // 1. Get the auth URL without redirecting the main page
-      const result = await signIn('google', {
-        redirect: false,
-        callbackUrl: '/auth/popup-close'
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/verify`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
       });
 
-      if (result?.error) {
-        throw new Error(result.error);
+      if (error) {
+        throw error;
       }
 
-      if (result?.url) {
-        // 2. Open popup
-        const width = 500;
-        const height = 600;
-        const left = window.screen.width / 2 - width / 2;
-        const top = window.screen.height / 2 - height / 2;
-
-        const popup = window.open(
-          result.url,
-          'Google Sign In',
-          `width=${width},height=${height},left=${left},top=${top}`
-        );
-
-        // 3. Monitor popup via postMessage
-        const handleMessage = (event: MessageEvent) => {
-          if (event.origin !== window.location.origin) return;
-
-          if (event.data?.type === 'NEXUS_AUTH_SUCCESS') {
-            window.removeEventListener('message', handleMessage);
-            // popup will close itself
-            window.location.reload();
-          } else if (event.data?.type === 'NEXUS_AUTH_ERROR') {
-            window.removeEventListener('message', handleMessage);
-            // popup will close itself
-            setError('Authentication failed: ' + (event.data.error || 'Unknown error'));
-            setIsGoogleLoading(false);
-          }
-        };
-        window.addEventListener('message', handleMessage);
-
-        // We rely on postMessage for success (from /auth/popup-close) or error (from /?error=...).
-        // We do NOT poll popup.closed to avoid COOP warnings.
-        // If the user manually closes the popup, they must click "Cancel" in the UI.
-      }
+      // Supabase will redirect the browser, so we just wait.
 
     } catch (err: any) {
       setError('Google login failed: ' + (err.message || String(err)));
