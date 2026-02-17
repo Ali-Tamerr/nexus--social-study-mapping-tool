@@ -1,19 +1,22 @@
 'use client';
 
 import { ProjectCollection } from '@/types/knowledge';
-import { Folder, MoreVertical, Trash2, ExternalLink, Share2, Loader2, Pencil } from 'lucide-react';
+import { Folder, Trash2, Share2, Pencil, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ShareModal } from '@/components/ui/ShareModal';
 
 interface GroupListProps {
     groups: ProjectCollection[];
     onDelete: (group: ProjectCollection) => void;
     onEdit: (group: ProjectCollection) => void;
+    viewMode: 'grid' | 'list';
 }
 
-export function GroupList({ groups, onDelete, onEdit }: GroupListProps) {
+export function GroupList({ groups, onDelete, onEdit, viewMode }: GroupListProps) {
     const [shareUrl, setShareUrl] = useState<string | null>(null);
+    const router = useRouter();
+    const isListView = viewMode === 'list';
 
     if (groups.length === 0) {
         return (
@@ -32,57 +35,92 @@ export function GroupList({ groups, onDelete, onEdit }: GroupListProps) {
         setShareUrl(url);
     };
 
+    const handleOpenGroup = (group: ProjectCollection) => {
+        router.push(`/collections/${group.id}/preview`);
+    };
+
     return (
         <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {groups.map((group) => (
+            <div className={
+                viewMode === 'grid'
+                    ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'
+                    : 'flex flex-col gap-3'
+            }>
+                {groups.filter(g => g && g.id).map((group) => (
                     <div
                         key={group.id}
-                        className="group relative flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 transition-all hover:border-zinc-700 hover:bg-zinc-900"
+                        onClick={() => handleOpenGroup(group)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleOpenGroup(group);
+                            }
+                        }}
+                        className={`
+                            group relative rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 text-left 
+                            transition-all cursor-pointer
+                            hover:border-zinc-700 hover:bg-zinc-900
+                            flex items-center justify-between ${!isListView ? 'sm:block' : ''}
+                        `}
                     >
-                        <div className="flex items-start justify-between">
-                            <div className="space-y-1">
-                                <h3 className="font-semibold text-white group-hover:text-[#355ea1] transition-colors">
-                                    {group.name}
-                                </h3>
-                                <p className="text-sm text-zinc-500 line-clamp-2">
-                                    {group.description || 'No description'}
-                                </p>
+                        <div className="flex max-sm:flex-col h-24 gap-4 sm:flex-col justify-between">
+                            <div className="flex flex-col items-start gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-3 w-3 rounded-full flex-shrink-0 bg-[#355ea1]" />
+                                    <h3 className="font-semibold text-white group-hover:text-[#355ea1] transition-colors">
+                                        {group.name}
+                                    </h3>
+                                    <ChevronRight className="h-5 w-5 -ml-1 text-zinc-600 transition-transform group-hover:translate-x-1 group-hover:text-zinc-400" />
+                                </div>
+                                {group.description && (
+                                    <p className="mt-1 text-sm text-zinc-500 line-clamp-2">
+                                        {group.description}
+                                    </p>
+                                )}
                             </div>
 
-                            <div className="flex items-center gap-1">
+                            <div className="flex max-sm:self-start items-center gap-3 text-xs text-zinc-500">
+                                <span>{group.items?.length || group.projects?.length || 0} Projects</span>
+                                <span className="text-zinc-600">
+                                    {group.updatedAt && !isNaN(new Date(group.updatedAt).getTime())
+                                        ? new Date(group.updatedAt).toLocaleDateString()
+                                        : ''}
+                                </span>
                                 <button
                                     onClick={(e) => handleShare(e, group)}
-                                    className="rounded p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-blue-400 transition-colors"
+                                    className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-blue-400 transition-colors"
                                     title="Share Group"
+                                    type="button"
                                 >
-                                    <Share2 className="h-4 w-4" />
+                                    <Share2 className="w-4 h-4" />
                                 </button>
                                 <button
-                                    onClick={() => onEdit(group)}
-                                    className="rounded p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-white transition-colors"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onEdit(group);
+                                    }}
+                                    className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
                                     title="Edit Group"
+                                    type="button"
                                 >
-                                    <Pencil className="h-4 w-4" />
+                                    <Pencil className="w-4 h-4" />
                                 </button>
                                 <button
-                                    onClick={() => onDelete(group)}
-                                    className="rounded p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-red-500 transition-colors"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onDelete(group);
+                                    }}
+                                    className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-red-500 transition-colors"
                                     title="Delete Group"
+                                    type="button"
                                 >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="w-4 h-4" />
                                 </button>
                             </div>
-                        </div>
-
-                        <div className="mt-4 flex items-center justify-between text-xs text-zinc-500">
-                            <span>{group.projects?.length || 0} Projects</span>
-                            <Link
-                                href={`/collections/${group.id}/preview`}
-                                className="flex items-center gap-1 hover:text-zinc-300"
-                            >
-                                View <ExternalLink className="h-3 w-3" />
-                            </Link>
                         </div>
                     </div>
                 ))}

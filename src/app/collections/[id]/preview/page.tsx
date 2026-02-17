@@ -72,6 +72,25 @@ export default function CollectionPreviewPage() {
         router.push(`/project/${project.id}/preview`);
     };
 
+    const ownerDisplayName: string = owner
+        ? ((owner.displayName && owner.displayName.trim())
+            || ((owner as any).display_name && String((owner as any).display_name).trim())
+            || ((owner as any).name && String((owner as any).name).trim())
+            || ((owner as any).fullName && String((owner as any).fullName).trim())
+            || ((owner as any).full_name && String((owner as any).full_name).trim())
+            || ((owner as any).userMetadata?.full_name && String((owner as any).userMetadata.full_name).trim())
+            || ((owner as any).user_metadata?.full_name && String((owner as any).user_metadata.full_name).trim())
+            || 'Unknown User')
+        : 'Unknown User';
+
+    const ownerInitials = ownerDisplayName
+        .split(' ')
+        .filter(Boolean)
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2) || 'U';
+
     if (loading) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-zinc-950">
@@ -130,20 +149,18 @@ export default function CollectionPreviewPage() {
                                     {owner.avatarUrl ? (
                                         <img
                                             src={owner.avatarUrl}
-                                            alt={owner.displayName || 'User'}
+                                            alt={ownerDisplayName}
                                             className="h-full w-full object-cover"
                                             referrerPolicy="no-referrer"
                                         />
                                     ) : (
                                         <span className="text-[10px] font-medium text-[#355ea1]">
-                                            {owner.displayName
-                                                ? owner.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-                                                : owner.email?.charAt(0).toUpperCase() || 'U'}
+                                            {ownerInitials}
                                         </span>
                                     )}
                                 </div>
                                 <span className="text-sm font-medium text-zinc-200">
-                                    {owner.displayName || owner.email?.split('@')[0] || 'Unknown User'}
+                                    {ownerDisplayName}
                                 </span>
                             </div>
                         </div>

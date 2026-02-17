@@ -26,7 +26,8 @@ export function EditProjectModal({ isOpen, onClose, onSubmit, loading, initialDa
             setName(initialData.name);
             setDescription(initialData.description || '');
         }
-    }, [isOpen, initialData]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
 
     const handleSubmit = async () => {
         if (!name.trim()) return;

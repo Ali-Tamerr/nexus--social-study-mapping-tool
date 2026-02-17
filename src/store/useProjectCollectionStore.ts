@@ -17,7 +17,13 @@ interface ProjectCollectionState {
   }) => Promise<void>;
   updateCollection: (
     id: number,
-    data: { name?: string; description?: string; projectIds?: number[] },
+    data: {
+      id?: number;
+      name?: string;
+      description?: string;
+      projectIds?: number[];
+      userId?: string;
+    },
   ) => Promise<void>;
   deleteCollection: (id: number) => Promise<void>;
 }
@@ -31,14 +37,24 @@ export const useProjectCollectionStore = create<ProjectCollectionState>(
     setCollections: (collections) => set({ collections }),
 
     fetchCollections: async (userId) => {
+      console.log("[Store] fetchCollections called for user:", userId);
       set({ isLoading: true, error: null });
       try {
-        const collections = await api.projectCollections.getByUser(userId);
+        const raw = await api.projectCollections.getByUser(userId);
+        console.log("[Store] Raw fetched collections:", JSON.stringify(raw));
+        const collections = raw.map((c: any) => ({
+          ...c,
+          projectIds:
+            c.projectIds || c.items?.map((i: any) => i.projectId) || [],
+        }));
+        console.log(
+          "[Store] Normalized collections:",
+          JSON.stringify(collections),
+        );
         set({ collections, isLoading: false });
       } catch (err) {
         console.error("Failed to fetch collections:", err);
-        // Don't set error state for 404s or network errors to avoid UI clutter, just log
-        set({ collections: [], isLoading: false });
+        set({ isLoading: false });
       }
     },
 
@@ -60,13 +76,47 @@ export const useProjectCollectionStore = create<ProjectCollectionState>(
     updateCollection: async (id, data) => {
       set({ isLoading: true, error: null });
       try {
-        const updated = await api.projectCollections.update(id, data);
-        set((state) => ({
-          collections: state.collections.map((c) =>
-            c.id === id ? updated : c,
-          ),
-          isLoading: false,
-        }));
+        await api.projectCollections.update(id, {
+          ...data,
+          id,
+        });
+        // Manually update the state to reflect changes immediately
+        set((state) => {
+          const existing = state.collections.find((c) => c.id == id);
+          if (!existing) {
+            console.warn(
+              `Collection with id ${id} not found in store for update`,
+            );
+            return { isLoading: false };
+          }
+
+          const updatedItems =
+            data.projectIds?.map((pid) => ({
+              collectionId: id,
+              projectId: pid,
+              order: 0,
+            })) || existing.items;
+
+          const updatedCollection = {
+            ...existing,
+            ...data,
+            id, // Ensure ID is preserved
+            items: updatedItems,
+            updatedAt: new Date().toISOString(),
+          };
+
+          console.log(
+            "[Store] Updating collection manually:",
+            updatedCollection,
+          );
+
+          return {
+            collections: state.collections.map((c) =>
+              c.id == id ? updatedCollection : c,
+            ),
+            isLoading: false,
+          };
+        });
       } catch (err) {
         console.error("Failed to update collection:", err);
         set({ isLoading: false, error: "Failed to update collection" });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Github } from 'lucide-react';
 
@@ -46,6 +46,15 @@ function AuthErrorHandler() {
 export default function HomePage() {
   const router = useRouter();
 
+  const collections = useProjectCollectionStore(state => state.collections);
+  const fetchCollections = useProjectCollectionStore(state => state.fetchCollections);
+  const isGroupsLoading = useProjectCollectionStore(state => state.isLoading);
+  const updateCollection = useProjectCollectionStore(state => state.updateCollection);
+  const createCollection = useProjectCollectionStore(state => state.createCollection);
+  const deleteCollection = useProjectCollectionStore(state => state.deleteCollection);
+
+  console.log('[Page] Render collections count:', collections.length, 'Example:', collections[0]);
+
   const {
     projects,
     setProjects,
@@ -59,14 +68,6 @@ export default function HomePage() {
     setCurrentUserId,
   } = useGraphStore();
 
-  const {
-    collections,
-    fetchCollections,
-    createCollection,
-    updateCollection,
-    deleteCollection,
-    isLoading: isGroupsLoading,
-  } = useProjectCollectionStore();
 
   const { showToast, showConfirmation } = useToast();
 
@@ -82,12 +83,16 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'all' | 'groups'>('all');
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
 
+  const fetchedUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && fetchedUserIdRef.current !== user.id) {
+      console.log('[Page] Triggering fetchCollections for user:', user.id);
       setCurrentUserId(user.id);
       fetchCollections(user.id);
+      fetchedUserIdRef.current = user.id;
     }
-  }, [user, setCurrentUserId, fetchCollections]);
+  }, [user?.id, setCurrentUserId, fetchCollections]);
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -111,15 +116,15 @@ export default function HomePage() {
 
   const filteredProjects = projects
     .filter((p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      (p.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (p.description?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
   const filteredGroups = collections
     .filter((g) =>
-      g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      (g.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (g.description?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
@@ -211,26 +216,46 @@ export default function HomePage() {
     }
   };
 
-  const [editingGroup, setEditingGroup] = useState<typeof collections[0] | null>(null);
+  const [editingGroupId, setEditingGroupId] = useState<number | null>(null);
+  const editingGroup = collections.find(c => c.id === editingGroupId);
 
   const handleEditGroupClick = (group: typeof collections[0]) => {
-    setEditingGroup(group);
+    setEditingGroupId(group.id);
   };
 
   const handleUpdateGroup = async (data: { name: string; description?: string; projectIds: number[] }) => {
     if (!editingGroup || !user?.id) return;
 
+    // We already have fresh data in editingGroup because it is derived from store collections
+
     try {
       await updateCollection(editingGroup.id, {
         name: data.name,
-        description: data.description,
-        projectIds: data.projectIds
+        description: data.description || "",
+        projectIds: data.projectIds,
+        userId: user.id
       });
-      setEditingGroup(null);
+      setEditingGroupId(null);
       showToast('Group updated successfully');
     } catch (err) {
       showToast(getFriendlyErrorMessage(err), 'error');
     }
+  };
+
+  // Debug helper for group projects
+  const getGroupProjectIds = (g: any) => {
+    if (g.projectIds && g.projectIds.length > 0) {
+      console.log('[Page] Using projectIds:', g.projectIds, 'Type:', typeof g.projectIds[0]);
+      return g.projectIds.map((id: any) => Number(id));
+    }
+    // Priority 2: Items (from relationship)
+    if (g.items && g.items.length > 0) return g.items.map((i: any) => Number(i.projectId));
+    // Priority 3: Projects (derived)
+    if (g.projects && g.projects.length > 0) return g.projects.map((p: any) => Number(p.id));
+
+    // Fallback: checks for empty arrays that might be valid if nothing else exists
+    const fallback = g.projectIds || g.items?.map((i: any) => i.projectId) || g.projects?.map((p: any) => p.id) || [];
+    return fallback.map((id: any) => Number(id));
   };
 
   const [groupToDelete, setGroupToDelete] = useState<typeof collections[0] | null>(null);
@@ -332,6 +357,7 @@ export default function HomePage() {
                     groups={filteredGroups}
                     onDelete={handleDeleteGroupClick}
                     onEdit={handleEditGroupClick}
+                    viewMode={viewMode}
                   />
                 )}
               </>
@@ -367,15 +393,16 @@ export default function HomePage() {
 
       {editingGroup && (
         <CreateGroupModal
+          key={`${editingGroup.id}-${editingGroup.updatedAt}`}
           isOpen={true}
-          onClose={() => setEditingGroup(null)}
+          onClose={() => setEditingGroupId(null)}
           onSubmit={handleUpdateGroup}
           loading={isGroupsLoading}
           availableProjects={projects}
           initialData={{
             name: editingGroup.name,
             description: editingGroup.description,
-            projectIds: editingGroup.items?.map(i => i.projectId) || []
+            projectIds: getGroupProjectIds(editingGroup)
           }}
         />
       )}

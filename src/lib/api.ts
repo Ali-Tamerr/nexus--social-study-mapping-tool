@@ -507,7 +507,13 @@ export const api = {
 
     update: (
       id: number,
-      data: { name?: string; description?: string; projectIds?: number[] },
+      data: {
+        id?: number;
+        name?: string;
+        description?: string;
+        projectIds?: number[];
+        userId?: string;
+      },
     ) =>
       fetchApiWithBody<ProjectCollection>(
         `/api/ProjectCollections/${id}`,

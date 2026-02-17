@@ -83,7 +83,7 @@ export function ProjectCard({
         </div>
       )}
 
-      <div className={`flex max-sm:flex-col items-center gap-4 ${!isListView ? 'sm:block' : ''} ${selectable && isSelected ? 'opacity-100' : ''}`}>
+      <div className={`flex max-sm:flex-col h-24 gap-4 sm:flex-col justify-between ${selectable && isSelected ? 'opacity-100' : ''}`}>
         <div className="flex flex-col items-start gap-3">
           <div className="flex items-center gap-3">
             {project.color ? (
@@ -104,7 +104,7 @@ export function ProjectCard({
           )}
         </div>
 
-        <div className={`flex max-sm:self-start items-center gap-3 text-xs text-zinc-500 ${!isListView ? 'sm:mt-4' : ''}`}>
+        <div className="flex max-sm:self-start items-center gap-3 text-xs text-zinc-500">
           <span className="text-zinc-600">
             {project.updatedAt && !isNaN(new Date(project.updatedAt).getTime())
               ? new Date(project.updatedAt).toLocaleDateString()

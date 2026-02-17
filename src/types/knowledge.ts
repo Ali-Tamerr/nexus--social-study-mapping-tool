@@ -155,6 +155,7 @@ export interface ProjectCollection {
   items?: ProjectCollectionItem[];
   // Helper for frontend convenience, populated from items
   projects?: Project[];
+  projectIds?: number[];
 }
 
 export interface ProjectCollectionItem {
