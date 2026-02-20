@@ -19,10 +19,13 @@ All notable changes to this project will be documented in this file.
 
 ## [v1.7] - 2026-02-13 — 2026-02-18
 
-### Feature: Authentication & Collection Management
+### Feature: Collection Management
 
-- **Auth Sync:** Implemented **client-side authentication synchronization** and a new **User Profile Menu**.
 - **Collection Previews:** Added a dedicated page to visualize **Project Collections** and their associated graphs.
+
+### Modifications
+
+- **Auth Sync:** Implemented **client-side authentication synchronization** 
 - **Multi-Account Support:** Enabled the ability to maintain two separate accounts (Standard vs. Google) using the same email address.
 - **Core API Client:** Built a robust API client for knowledge management entities and authentication types.
 
